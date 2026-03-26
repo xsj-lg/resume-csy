@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>登录 - AIS 简历筛选</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="auth-page">
+    <div class="background-glow"></div>
+    <section class="auth-card">
+      <h1>AIS 简历筛选系统登录</h1>
+      <p class="auth-subtext">仅管理员可创建用户；系统不支持自注册。</p>
+
+      <form id="login-form">
+        <label>
+          用户名
+          <input id="login-username" type="text" autocomplete="username" required />
+        </label>
+        <label>
+          密码
+          <input id="login-password" type="password" autocomplete="current-password" required />
+        </label>
+        <div class="auth-actions">
+          <button type="submit" class="primary-btn">登录</button>
+        </div>
+      </form>
+
+      <form id="change-password-form" class="hidden">
+        <p class="auth-subtext">首次登录需修改默认密码后才能进入系统。</p>
+        <label>
+          旧密码
+          <input id="old-password" type="password" autocomplete="current-password" required />
+        </label>
+        <label>
+          新密码（至少 8 位）
+          <input id="new-password" type="password" autocomplete="new-password" required />
+        </label>
+        <label>
+          确认新密码
+          <input id="confirm-password" type="password" autocomplete="new-password" required />
+        </label>
+        <div class="auth-actions">
+          <button type="submit" class="primary-btn">保存新密码并进入</button>
+        </div>
+      </form>
+
+      <p id="login-message" class="form-message"></p>
+    </section>
+
+    <script src="/static/login.js"></script>
+  </body>
+</html>

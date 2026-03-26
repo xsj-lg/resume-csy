@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIS 简历筛选工作台</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+    <main class="layout">
+      <header class="workspace-topbar">
+        <div class="workspace-title">AIS 简历筛选工作台</div>
+        <div class="workspace-actions">
+          <span id="current-user-text">未登录</span>
+          <a id="jobs-manage-link" class="topbar-link" href="/jobs">岗位管理</a>
+          <a id="operations-manage-link" class="topbar-link hidden" href="/static/operations.html">操作记录</a>
+          <a id="users-manage-link" class="topbar-link" href="/users">用户管理</a>
+          <button type="button" id="logout-btn" class="topbar-btn">退出登录</button>
+        </div>
+      </header>
+
+      <section class="panel panel-list">
+        <header class="panel-header panel-header-list">
+          <div class="panel-header-main">
+            <h1>AIS 简历筛选</h1>
+            <p id="candidate-count">加载中...</p>
+          </div>
+          <div class="sort-inline">
+            <label class="sort-inline-label">
+              排序方式
+              <select id="candidate-sort-mode">
+                <option value="star_time">星标优先 + 最近面试</option>
+                <option value="time">最近面试优先</option>
+                <option value="name">姓名排序</option>
+              </select>
+            </label>
+            <label class="checkbox-label sort-inline-check">
+              <input id="show-all-candidates" type="checkbox" />
+              显示全部候选人（含未通过）
+            </label>
+          </div>
+        </header>
+
+        <section class="upload-controls">
+          <button type="button" id="upload-resume-btn" class="primary-btn upload-btn">上传 PDF 简历</button>
+          <button type="button" id="sync-resumes-btn" class="secondary-btn upload-btn">同步本地目录</button>
+        </section>
+
+        <details class="collapsible-block filter-controls">
+          <summary class="collapsible-summary">简历筛选</summary>
+          <div class="collapsible-body">
+            <div class="filter-header">
+              <button type="button" id="candidate-filter-reset-btn" class="filter-reset-btn">重置筛选</button>
+            </div>
+            <div class="filter-grid">
+              <label>
+                候选人名称（模糊）
+                <input id="candidate-filter-name" type="text" placeholder="输入姓名关键词" />
+              </label>
+              <label>
+                申请岗位
+                <input id="candidate-filter-position" type="text" placeholder="输入岗位关键词或全称" />
+              </label>
+              <label>
+                岗位匹配方式
+                <select id="candidate-filter-position-match">
+                  <option value="fuzzy">模糊匹配</option>
+                  <option value="exact">精确匹配</option>
+                </select>
+              </label>
+              <label id="candidate-filter-department-wrap">
+                部门
+                <select id="candidate-filter-department">
+                  <option value="">全部部门</option>
+                  <option value="销售部">销售部</option>
+                  <option value="研发部">研发部</option>
+                  <option value="算法部">算法部</option>
+                  <option value="项目部">项目部</option>
+                  <option value="人事部">人事部</option>
+                </select>
+              </label>
+              <label>
+                流程状态
+                <select id="candidate-filter-stage"></select>
+              </label>
+              <label>
+                上传日期（已有）
+                <select id="candidate-filter-upload-date"></select>
+              </label>
+              <label>
+                上传日期（起）
+                <input id="candidate-filter-upload-from" type="date" />
+              </label>
+              <label>
+                上传日期（止）
+                <input id="candidate-filter-upload-to" type="date" />
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <details class="collapsible-block calendar-section">
+          <summary class="collapsible-summary">
+            <span>面试日历</span>
+            <span id="calendar-count">0</span>
+          </summary>
+          <div class="collapsible-body">
+            <ul id="interview-calendar" class="calendar-list"></ul>
+          </div>
+        </details>
+
+        <ul id="candidate-list" class="candidate-list"></ul>
+      </section>
+
+      <section class="panel panel-pdf">
+        <header class="panel-header compact">
+          <h2 id="active-candidate">请选择候选人</h2>
+          <p id="active-meta"></p>
+        </header>
+        <iframe id="resume-frame" title="候选人简历 PDF"></iframe>
+      </section>
+
+      <section class="panel panel-form">
+        <header class="panel-header compact">
+          <h2>面试工作台</h2>
+          <p id="save-hint">未保存</p>
+        </header>
+
+        <form id="evaluation-form">
+          <section class="stage-section">
+            <div class="section-title-row">
+              <h3>面试阶段</h3>
+              <span id="current-stage-text" class="stage-current"></span>
+            </div>
+            <div id="stage-axis" class="stage-axis"></div>
+            <p id="stage-ended-from" class="stage-ended-from hidden"></p>
+            <div class="stage-actions">
+              <button type="button" id="stage-next-btn" class="stage-action-btn">进入下一阶段</button>
+              <button type="button" id="stage-end-btn" class="stage-action-btn stage-end-btn">未通过当前阶段</button>
+              <button type="button" id="stage-reset-btn" class="stage-action-btn stage-reset-btn">重置阶段状态</button>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3>岗位配置快照</h3>
+            <p id="job-config-meta" class="auth-subtext">未关联岗位配置</p>
+            <ul id="job-config-list" class="job-config-list"></ul>
+          </section>
+
+          <section class="form-section">
+            <div class="section-title-row section-title-actions">
+              <h3>AI 自动评分结果</h3>
+              <button type="button" id="trigger-auto-score-btn" class="secondary-btn">重新触发评分</button>
+            </div>
+            <p id="ai-score-meta" class="auth-subtext">暂无自动评分结果</p>
+            <p id="ai-score-summary" class="form-message"></p>
+            <ul id="ai-score-risk-list" class="ai-score-risk-list"></ul>
+            <ul id="ai-score-dimension-list" class="ai-score-dimension-list"></ul>
+          </section>
+
+          <section class="form-section">
+            <h3 id="round-section-title">第1阶段的面评信息</h3>
+            <label>
+              面试时间
+              <input id="interview-time" name="interview_time" type="datetime-local" />
+            </label>
+            <label>
+              阶段面试人
+              <select id="stage-interviewer" name="interviewer_user_id"></select>
+            </label>
+            <label>
+              拟提问
+              <textarea id="planned-questions" name="planned_questions" placeholder="记录本轮重点提问"></textarea>
+            </label>
+            <label>
+              面评
+              <textarea id="interview-review" name="interview_review" placeholder="记录本轮面评"></textarea>
+            </label>
+            <button type="button" id="save-round-btn" class="primary-btn">保存面评信息</button>
+          </section>
+
+          <section class="form-section">
+            <div class="section-title-row section-title-actions">
+              <h3>通用信息</h3>
+              <button type="button" id="delete-candidate-btn" class="danger-btn">删除候选人</button>
+            </div>
+
+            <label>
+              候选人名称
+              <input id="candidate-name" name="candidate_name" type="text" required />
+            </label>
+
+            <div class="inline-row">
+              <label>
+                Base（工作地）
+                <select id="base-location" name="base_location" required>
+                  <option value="北京">北京</option>
+                  <option value="深圳">深圳</option>
+                </select>
+              </label>
+              <label>
+                所属部门
+                <select id="candidate-department" name="department_scope">
+                  <option value="">请选择部门</option>
+                  <option value="销售部">销售部</option>
+                  <option value="研发部">研发部</option>
+                  <option value="算法部">算法部</option>
+                  <option value="项目部">项目部</option>
+                  <option value="人事部">人事部</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              申请岗位（说明）
+              <input id="applied-position" name="applied_position" type="text" required />
+            </label>
+
+            <label>
+              关联岗位（用于 AI 评分）
+              <select id="candidate-job">
+                <option value="">请选择岗位</option>
+              </select>
+            </label>
+
+            <div class="inline-row">
+              <label>
+                薪资模式
+                <select id="salary-mode" name="salary_mode" required>
+                  <option value="月薪">月薪</option>
+                  <option value="年包">年包</option>
+                </select>
+              </label>
+              <label>
+                薪资区间
+                <input id="salary-range" name="salary_range" type="text" placeholder="如 30k-40k" />
+              </label>
+            </div>
+
+            <label>
+              候选人类型
+              <select id="experience-type" name="experience_type" required>
+                <option value="应届生">应届生</option>
+                <option value="已工作">已工作</option>
+              </select>
+            </label>
+
+            <div class="inline-row">
+              <label id="graduation-wrap">
+                预期毕业年限
+                <input id="graduation-year" name="graduation_year" type="text" placeholder="如 2026" />
+              </label>
+              <label id="work-wrap">
+                工作年限
+                <input id="work-years" name="work_years" type="text" placeholder="如 1年以内 / 3年" />
+              </label>
+            </div>
+
+            <div class="inline-row">
+              <label>
+                最高学历
+                <select id="highest-education" name="highest_education" required>
+                  <option value="未知">未知</option>
+                  <option value="专科">专科</option>
+                  <option value="本科">本科</option>
+                  <option value="硕士">硕士</option>
+                  <option value="博士">博士</option>
+                </select>
+              </label>
+              <label>
+                学校
+                <input id="school-name" name="school_name" type="text" placeholder="如 清华大学" required />
+              </label>
+            </div>
+
+            <div class="inline-row">
+              <label>
+                拟录取形式
+                <select id="hire-type" name="hire_type" required>
+                  <option value="实习">实习</option>
+                  <option value="正式">正式</option>
+                </select>
+              </label>
+              <label>
+                预设岗位（文本）
+                <input id="preset-position" name="preset_position" type="text" placeholder="用于检索与同步岗位字段" required />
+              </label>
+            </div>
+
+            <div class="section-title-row section-title-actions">
+              <h3>结构化抽取</h3>
+              <button type="button" id="trigger-resume-extract-btn" class="secondary-btn">更新抽取结果</button>
+            </div>
+            <p id="resume-extract-meta" class="auth-subtext">暂无抽取结果</p>
+            <div class="inline-row">
+              <label>
+                联系电话（抽取）
+                <input id="extract-phone" type="text" readonly />
+              </label>
+              <label>
+                邮箱（抽取）
+                <input id="extract-email" type="text" readonly />
+              </label>
+            </div>
+            <div class="inline-row">
+              <label>
+                所在城市（抽取）
+                <input id="extract-location" type="text" readonly />
+              </label>
+              <label>
+                专业（抽取）
+                <input id="extract-major" type="text" readonly />
+              </label>
+            </div>
+            <label>
+              技能（抽取）
+              <textarea id="extract-skills" readonly placeholder="暂无"></textarea>
+            </label>
+            <label>
+              证书（抽取）
+              <textarea id="extract-certificates" readonly placeholder="暂无"></textarea>
+            </label>
+            <label>
+              个人摘要（抽取）
+              <textarea id="extract-summary" readonly placeholder="暂无"></textarea>
+            </label>
+            <label>
+              教育经历（抽取）
+              <textarea id="extract-education" readonly placeholder="暂无"></textarea>
+            </label>
+            <label>
+              工作经历（抽取）
+              <textarea id="extract-work" readonly placeholder="暂无"></textarea>
+            </label>
+            <label>
+              项目经历（抽取）
+              <textarea id="extract-project" readonly placeholder="暂无"></textarea>
+            </label>
+
+            <button type="button" id="save-profile-btn" class="primary-btn">保存通用信息</button>
+          </section>
+        </form>
+
+        <p id="form-message" class="form-message"></p>
+      </section>
+    </main>
+
+    <div id="upload-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h3>上传 PDF 简历</h3>
+        <form id="upload-form" class="modal-form">
+          <label>
+            选择文件（可多选）
+            <input id="upload-file" type="file" accept=".pdf,application/pdf" multiple required />
+          </label>
+          <label>
+            关联岗位
+            <select id="upload-job" required>
+              <option value="">请选择岗位</option>
+            </select>
+          </label>
+          <label>
+            所属部门
+            <select id="upload-department" required>
+              <option value="">请选择部门</option>
+              <option value="销售部">销售部</option>
+              <option value="研发部">研发部</option>
+              <option value="算法部">算法部</option>
+              <option value="项目部">项目部</option>
+              <option value="人事部">人事部</option>
+            </select>
+          </label>
+          <label>
+            候选人名称（单文件可选）
+            <input id="upload-candidate-name" type="text" placeholder="不填则取文件名" />
+          </label>
+          <div class="modal-actions">
+            <button type="submit" id="upload-submit-btn" class="primary-btn">开始上传</button>
+            <button type="button" id="upload-cancel-btn" class="secondary-btn">取消</button>
+          </div>
+          <p id="upload-message" class="form-message"></p>
+        </form>
+      </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>岗位管理 - AIS 简历筛选</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+    <main class="jobs-layout">
+      <header class="jobs-header">
+        <div>
+          <h1>岗位管理</h1>
+          <p id="jobs-current-user" class="auth-subtext">加载中...</p>
+        </div>
+        <div class="workspace-actions">
+          <a class="topbar-link" href="/">返回工作台</a>
+          <a id="jobs-operations-link" class="topbar-link hidden" href="/static/operations.html">操作记录</a>
+          <a class="topbar-link" href="/users">用户管理</a>
+          <button type="button" id="jobs-logout-btn" class="topbar-btn">退出登录</button>
+        </div>
+      </header>
+
+      <section class="jobs-main">
+        <aside class="jobs-sidebar">
+          <section class="jobs-card">
+            <h3>岗位列表</h3>
+            <div class="jobs-filter-grid">
+              <label>
+                关键词
+                <input id="job-filter-keyword" type="text" placeholder="岗位名称/地点/部门" />
+              </label>
+              <label>
+                状态
+                <select id="job-filter-status">
+                  <option value="">全部</option>
+                  <option value="open">招聘中</option>
+                  <option value="closed">已关闭</option>
+                </select>
+              </label>
+              <label>
+                部门
+                <select id="job-filter-department">
+                  <option value="">全部部门</option>
+                  <option value="销售部">销售部</option>
+                  <option value="研发部">研发部</option>
+                  <option value="算法部">算法部</option>
+                  <option value="项目部">项目部</option>
+                  <option value="人事部">人事部</option>
+                </select>
+              </label>
+            </div>
+            <div class="jobs-sidebar-actions">
+              <button type="button" id="job-filter-reset-btn" class="secondary-btn">重置筛选</button>
+              <button type="button" id="job-new-btn" class="primary-btn">新建岗位</button>
+            </div>
+            <ul id="job-list" class="job-list"></ul>
+          </section>
+        </aside>
+
+        <section class="jobs-content">
+          <section class="jobs-card">
+            <header class="jobs-form-header">
+              <h3 id="job-form-title">新建岗位</h3>
+              <span id="job-status-badge" class="job-status-badge">未保存</span>
+            </header>
+
+            <form id="job-form" class="jobs-form">
+              <section class="jobs-section">
+                <h4>基础信息</h4>
+                <div class="inline-row">
+                  <label>
+                    岗位名称
+                    <input id="job-title" type="text" required />
+                  </label>
+                  <label>
+                    所属部门
+                    <select id="job-department" required>
+                      <option value="">请选择部门</option>
+                      <option value="销售部">销售部</option>
+                      <option value="研发部">研发部</option>
+                      <option value="算法部">算法部</option>
+                      <option value="项目部">项目部</option>
+                      <option value="人事部">人事部</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="inline-row">
+                  <label>
+                    招聘人数
+                    <input id="job-headcount" type="number" min="1" step="1" required />
+                  </label>
+                  <label>
+                    工作地点
+                    <input id="job-location" type="text" placeholder="如 北京 / 深圳" required />
+                  </label>
+                </div>
+                <div class="inline-row">
+                  <label>
+                    招聘负责人
+                    <select id="job-recruiter"></select>
+                  </label>
+                  <label>
+                    用人经理（可选）
+                    <select id="job-hiring-manager"></select>
+                  </label>
+                </div>
+                <label>
+                  岗位说明（JD）
+                  <textarea id="job-jd" placeholder="请输入岗位职责、业务背景等"></textarea>
+                </label>
+                <label>
+                  任职要求
+                  <textarea id="job-requirements" placeholder="请输入核心要求"></textarea>
+                </label>
+              </section>
+
+              <section class="jobs-section">
+                <h4>固定招聘流程与评价要求</h4>
+                <div class="inline-row">
+                  <label>
+                    初筛评价要求
+                    <textarea id="process-screening" placeholder="如：基础条件匹配、经历真实性"></textarea>
+                  </label>
+                  <label>
+                    一面评价要求
+                    <textarea id="process-first" placeholder="如：技术深度、沟通协作"></textarea>
+                  </label>
+                </div>
+                <div class="inline-row">
+                  <label>
+                    二面评价要求
+                    <textarea id="process-second" placeholder="如：项目主导能力、架构思维"></textarea>
+                  </label>
+                  <label>
+                    HR 面评价要求
+                    <textarea id="process-hr" placeholder="如：稳定性、薪资匹配度"></textarea>
+                  </label>
+                </div>
+              </section>
+
+              <section class="jobs-section">
+                <h4>岗位筛选标准</h4>
+                <div class="inline-row">
+                  <label>
+                    学历要求
+                    <input id="criteria-education" type="text" placeholder="如：本科及以上" />
+                  </label>
+                  <label>
+                    专业要求
+                    <input id="criteria-major" type="text" placeholder="如：计算机/软件工程" />
+                  </label>
+                </div>
+                <label>
+                  技能要求
+                  <input id="criteria-skills" type="text" placeholder="如：Python, NLP, LLM" />
+                </label>
+                <label>
+                  项目经验要求
+                  <textarea id="criteria-project" placeholder="如：至少 1 个模型落地项目"></textarea>
+                </label>
+              </section>
+
+              <section class="jobs-section">
+                <h4>评分表管理（Excel）</h4>
+                <p class="form-message">版本列表支持预览、生效切换、删除，并展示上传人/大小/存储路径等完整信息。</p>
+                <div class="jobs-template-upload">
+                  <input id="template-file" type="file" accept=".xlsx,.xls,.csv" />
+                  <button type="button" id="template-upload-btn" class="secondary-btn">上传评分表</button>
+                </div>
+                <p id="template-message" class="form-message"></p>
+                <div id="template-preview" class="template-preview"></div>
+                <div id="active-template-text" class="template-active">当前生效版本：无</div>
+                <ul id="template-version-list" class="template-version-list"></ul>
+              </section>
+
+              <section class="jobs-section">
+                <h4>自动评分与关键操作</h4>
+                <label class="checkbox-label">
+                  <input id="auto-score-enabled" type="checkbox" />
+                  启用 AI 自动评分
+                </label>
+                <div class="jobs-action-row">
+                  <button type="submit" id="job-save-btn" class="primary-btn">保存岗位</button>
+                  <button type="button" id="job-close-btn" class="secondary-btn">关闭岗位</button>
+                  <button type="button" id="job-copy-btn" class="secondary-btn">复制岗位</button>
+                  <button type="button" id="trigger-score-btn" class="secondary-btn">触发评分（演示）</button>
+                </div>
+                <p id="job-message" class="form-message"></p>
+              </section>
+            </form>
+          </section>
+
+          <section class="jobs-card">
+            <h3>关键操作日志</h3>
+            <ul id="job-log-list" class="job-log-list"></ul>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="/static/jobs.js"></script>
+  </body>
+</html>

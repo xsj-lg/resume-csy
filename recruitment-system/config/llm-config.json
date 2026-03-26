@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "provider": "openai_compatible",
+  "model": "qwen3.5-plus",
+  "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+  "api_key_env": "Bearer sk-460e1ba121bc4cd9ae3a46bd8f9fddf1",
+  "temperature": 0.2,
+  "max_tokens": 5000,
+  "timeout_seconds": 1800,
+  "prompt_config_path": "config/llm-prompts.json",
+  "active_prompt_id": "resume_scoring_generic_v1"
+}

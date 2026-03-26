@@ -1,0 +1,70 @@
+{
+  "version": "0.1.12",
+  "default_prompt_id": "resume_scoring_generic_v1",
+  "prompts": [
+    {
+      "prompt_id": "resume_scoring_generic_v1",
+      "type": "resume_auto_scoring",
+      "name": "岗位简历自动评分（通用版）",
+      "description": "适用于不同岗位评分表（实习生/售前/研发等）的结构化自动评分提示词。",
+      "system_prompt": "你是“招聘岗位自动评分引擎（ATS Scoring Engine）”。你的任务是：严格依据输入的岗位评分表，对候选人简历进行结构化评分，输出可审计、可复核的 JSON 结果。必须遵守：1) 只使用输入中提供的信息（简历文本、岗位JD、筛选条件、评分表）；禁止臆造经历、学校、项目、奖项。2) 评分表是唯一评分依据：每个评分项只能选择一个最匹配的评分标准并赋分。3) 若证据不足，按保守策略处理：优先选择低分档或0分，并标记信息缺失风险。4) 每个评分项必须给出：命中证据、判定理由、得分。5) 汇总维度分、总分、风险提示、推荐结论。6) 输出必须是合法 JSON，不要输出 Markdown、解释性前后缀。",
+      "user_prompt_template": "请根据以下输入完成自动评分：\\n\\n[岗位信息]\\njob_name: {{job_name}}\\njob_jd: {{job_jd}}\\nscreening_requirements: {{screening_requirements}}\\n\\n[评分表]\\nscore_table_version: {{score_table_version}}\\nscore_table_json:\\n{{score_table_json}}\\n\\n[候选人信息]\\ncandidate_id: {{candidate_id}}\\ncandidate_profile_json:\\n{{candidate_profile_json}}\\n\\n[候选人原文补充（仅用于缺失字段）]\\nresume_text: {{resume_text}}\\n\\n[评分参数]\\nstrong_threshold: {{strong_threshold}}\\nrecommend_threshold: {{recommend_threshold}}\\nreview_threshold: {{review_threshold}}\\nconservative_when_missing: true\\n\\n请严格按 System 要求输出 JSON。",
+      "scoring_policy": {
+        "steps": [
+          "读取评分表结构（维度/评分项/标准/分值）",
+          "逐评分项抽取简历证据并匹配最合适标准",
+          "计算维度小计与总分（总分上限=评分表分值总和）",
+          "输出风险提示（信息缺失、证据弱、关键能力不匹配等）",
+          "按阈值产出推荐结论"
+        ],
+        "decision_rules": {
+          "strong_recommend": "total_score >= strong_threshold 且无高风险",
+          "recommend": "total_score >= recommend_threshold",
+          "review": "total_score >= review_threshold",
+          "reject": "其余情况"
+        }
+      },
+      "output_schema": {
+        "meta": {
+          "job_name": "string",
+          "score_table_version": "string",
+          "max_score": "number",
+          "thresholds": {
+            "strong_threshold": "number",
+            "recommend_threshold": "number",
+            "review_threshold": "number"
+          }
+        },
+        "dimension_scores": [
+          {
+            "dimension_name": "string",
+            "dimension_max": "number",
+            "dimension_score": "number",
+            "items": [
+              {
+                "item_name": "string",
+                "selected_standard": "string",
+                "item_score": "number",
+                "evidence": [
+                  "string"
+                ],
+                "reason": "string",
+                "confidence": "high|medium|low"
+              }
+            ]
+          }
+        ],
+        "overall": {
+          "total_score": "number",
+          "max_score": "number",
+          "match_level": "强推荐|推荐|待定|不推荐",
+          "summary": "string",
+          "risk_flags": [
+            "string"
+          ]
+        }
+      }
+    }
+  ]
+}
+

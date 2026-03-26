@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>用户管理 - AIS 简历筛选</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+    <main class="users-layout">
+      <header class="users-header">
+        <div>
+          <h1>用户管理</h1>
+          <p id="users-current-user" class="auth-subtext">加载中...</p>
+        </div>
+        <div class="workspace-actions">
+          <a class="topbar-link" href="/">返回工作台</a>
+          <a class="topbar-link" href="/jobs">岗位管理</a>
+          <a class="topbar-link" href="/static/operations.html">操作记录</a>
+          <button type="button" id="users-logout-btn" class="topbar-btn">退出登录</button>
+        </div>
+      </header>
+
+      <section class="users-grid">
+        <div class="users-table-wrap">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>用户名</th>
+                <th>显示名</th>
+                <th>状态</th>
+                <th>角色</th>
+                <th>部门范围</th>
+                <th>需改密</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body"></tbody>
+          </table>
+        </div>
+
+        <div class="users-form-wrap">
+          <h3>新增用户</h3>
+          <form id="create-user-form">
+            <label>
+              用户名
+              <input id="new-username" type="text" placeholder="如 alice" required />
+            </label>
+            <label>
+              显示名
+              <input id="new-display-name" type="text" placeholder="如 Alice" required />
+            </label>
+            <label>
+              初始密码
+              <input id="new-password" type="password" placeholder="至少 8 位" required />
+            </label>
+            <label>
+              角色
+              <select id="new-role" required>
+                <option value="hr_specialist">HR / 招聘专员</option>
+                <option value="interviewer">面试官</option>
+                <option value="hiring_manager">部门负责人 / 用人经理</option>
+                <option value="administrator">管理员</option>
+              </select>
+            </label>
+            <label>
+              部门范围（仅部门负责人）
+              <select id="new-department-scope">
+                <option value="">不设置</option>
+                <option value="销售部">销售部</option>
+                <option value="研发部">研发部</option>
+                <option value="算法部">算法部</option>
+                <option value="项目部">项目部</option>
+                <option value="人事部">人事部</option>
+              </select>
+            </label>
+            <button type="submit" class="primary-btn">创建用户</button>
+          </form>
+          <p id="users-message" class="form-message"></p>
+
+          <section id="llm-config-panel" class="llm-config-panel hidden">
+            <div class="llm-config-header">
+              <h3>大模型配置（只读）</h3>
+              <button type="button" id="llm-config-refresh-btn" class="inline-btn">刷新</button>
+            </div>
+            <dl class="llm-config-list">
+              <div class="llm-config-item">
+                <dt>启用状态</dt>
+                <dd id="llm-config-enabled">-</dd>
+              </div>
+              <div class="llm-config-item">
+                <dt>服务商</dt>
+                <dd id="llm-config-provider">-</dd>
+              </div>
+              <div class="llm-config-item">
+                <dt>模型</dt>
+                <dd id="llm-config-model">-</dd>
+              </div>
+              <div class="llm-config-item">
+                <dt>接口地址</dt>
+                <dd id="llm-config-base-url">-</dd>
+              </div>
+              <div class="llm-config-item">
+                <dt>密钥变量</dt>
+                <dd id="llm-config-api-key-env">-</dd>
+              </div>
+              <div class="llm-config-item">
+                <dt>密钥是否存在</dt>
+                <dd id="llm-config-api-key-present">-</dd>
+              </div>
+              <div class="llm-config-item">
+                <dt>Temperature</dt>
+                <dd id="llm-config-temperature">-</dd>
+              </div>
+              <div class="llm-config-item">
+                <dt>Max Tokens</dt>
+                <dd id="llm-config-max-tokens">-</dd>
+              </div>
+              <div class="llm-config-item">
+                <dt>超时时间（秒）</dt>
+                <dd id="llm-config-timeout">-</dd>
+              </div>
+              <div class="llm-config-item">
+                <dt>配置来源</dt>
+                <dd id="llm-config-source">-</dd>
+              </div>
+              <div class="llm-config-item">
+                <dt>配置路径</dt>
+                <dd id="llm-config-path">-</dd>
+              </div>
+            </dl>
+            <p id="llm-config-message" class="form-message"></p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div id="edit-user-modal" class="modal-overlay hidden">
+      <section class="modal-card">
+        <header class="modal-header">
+          <h3 id="edit-user-title">编辑用户</h3>
+          <button type="button" id="edit-user-cancel-btn" class="topbar-btn">关闭</button>
+        </header>
+        <form id="edit-user-form" class="modal-form">
+          <label>
+            用户名
+            <input id="edit-username" type="text" disabled />
+          </label>
+          <label>
+            显示名
+            <input id="edit-display-name" type="text" required />
+          </label>
+          <label>
+            状态
+            <select id="edit-is-active" required>
+              <option value="1">启用</option>
+              <option value="0">禁用</option>
+            </select>
+          </label>
+          <label>
+            角色
+            <select id="edit-role" required>
+              <option value="hr_specialist">HR / 招聘专员</option>
+              <option value="interviewer">面试官</option>
+              <option value="hiring_manager">部门负责人 / 用人经理</option>
+              <option value="administrator">管理员</option>
+            </select>
+          </label>
+          <label>
+            部门范围（仅部门负责人）
+            <select id="edit-department-scope">
+              <option value="">不设置</option>
+              <option value="销售部">销售部</option>
+              <option value="研发部">研发部</option>
+              <option value="算法部">算法部</option>
+              <option value="项目部">项目部</option>
+              <option value="人事部">人事部</option>
+            </select>
+          </label>
+          <div class="modal-actions">
+            <button type="submit" id="edit-user-save-btn" class="primary-btn">保存修改</button>
+          </div>
+          <p id="edit-user-message" class="form-message"></p>
+        </form>
+      </section>
+    </div>
+
+    <script src="/static/users.js"></script>
+  </body>
+</html>

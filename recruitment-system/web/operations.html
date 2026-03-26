@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>操作记录 - AIS 简历筛选</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+    <main class="operations-layout">
+      <header class="operations-header">
+        <div>
+          <h1>操作记录</h1>
+          <p id="operations-current-user" class="auth-subtext">加载中...</p>
+          <p class="operations-note">
+            当前页面已优先接入后端操作日志查询、详情与导出链路；若后端日志服务暂不可用，会自动回退到本地演示数据与岗位页本地日志聚合展示。
+          </p>
+        </div>
+        <div class="workspace-actions">
+          <a class="topbar-link" href="/">返回工作台</a>
+          <a class="topbar-link" href="/jobs">岗位管理</a>
+          <a class="topbar-link" href="/users">用户管理</a>
+          <button type="button" id="operations-logout-btn" class="topbar-btn">退出登录</button>
+        </div>
+      </header>
+
+      <section class="operations-summary" aria-label="操作记录统计">
+        <article class="operations-stat-card">
+          <span class="operations-stat-label">日志总数</span>
+          <strong id="operations-stat-total" class="operations-stat-value">0</strong>
+          <span class="operations-stat-meta">当前演示视图中的全部操作记录</span>
+        </article>
+        <article class="operations-stat-card">
+          <span class="operations-stat-label">成功记录</span>
+          <strong id="operations-stat-success" class="operations-stat-value">0</strong>
+          <span class="operations-stat-meta">可用于审计核查的成功落痕</span>
+        </article>
+        <article class="operations-stat-card">
+          <span class="operations-stat-label">失败记录</span>
+          <strong id="operations-stat-failed" class="operations-stat-value">0</strong>
+          <span class="operations-stat-meta">保留失败动作与异常上下文</span>
+        </article>
+        <article class="operations-stat-card">
+          <span class="operations-stat-label">关键模块</span>
+          <strong id="operations-stat-module" class="operations-stat-value">-</strong>
+          <span class="operations-stat-meta">当前命中记录数最多的操作模块</span>
+        </article>
+      </section>
+
+      <section class="operations-main">
+        <aside class="operations-sidebar">
+          <section class="operations-card">
+            <div class="operations-card-header">
+              <h3>筛选条件</h3>
+              <button type="button" id="operations-filter-reset-btn" class="secondary-btn">重置筛选</button>
+            </div>
+            <div class="operations-filter-grid">
+              <label>
+                关键词
+                <input
+                  id="operations-filter-keyword"
+                  type="text"
+                  placeholder="对象名称 / 操作人 / 日志编号 / 备注"
+                />
+              </label>
+              <label>
+                操作模块
+                <select id="operations-filter-module"></select>
+              </label>
+              <label>
+                操作类型
+                <select id="operations-filter-type"></select>
+              </label>
+              <label>
+                操作人
+                <select id="operations-filter-user"></select>
+              </label>
+              <label>
+                业务对象类型
+                <select id="operations-filter-object-type"></select>
+              </label>
+              <label>
+                操作结果
+                <select id="operations-filter-result"></select>
+              </label>
+              <label>
+                请求来源
+                <select id="operations-filter-source"></select>
+              </label>
+              <label>
+                操作时间（起）
+                <input id="operations-filter-from" type="date" />
+              </label>
+              <label>
+                操作时间（止）
+                <input id="operations-filter-to" type="date" />
+              </label>
+            </div>
+          </section>
+
+          <section class="operations-card">
+            <div class="operations-card-header">
+              <h3>导出能力</h3>
+            </div>
+            <div class="operations-export-actions">
+              <button type="button" id="operations-export-json-btn" class="secondary-btn">导出筛选结果 JSON</button>
+              <button type="button" id="operations-export-csv-btn" class="secondary-btn">导出筛选结果 CSV</button>
+              <button type="button" id="operations-export-detail-btn" class="secondary-btn">导出当前详情 JSON</button>
+            </div>
+            <p id="operations-export-message" class="form-message"></p>
+          </section>
+
+          <section class="operations-card">
+            <div class="operations-card-header">
+              <h3>审计提示</h3>
+            </div>
+            <ul class="operations-hint-list">
+              <li>本页当前已接入统一日志查询、详情与导出接口，便于先做后端链路检查。</li>
+              <li>列表中的岗位相关记录已兼容读取岗位页本地日志，便于先检查界面与交互。</li>
+              <li>当后端日志服务异常时，页面会自动回退到前端演示数据，避免阻塞界面检查。</li>
+            </ul>
+          </section>
+        </aside>
+
+        <section class="operations-content">
+          <section class="operations-card operations-list-card">
+            <div class="operations-card-header">
+              <div>
+                <h3>记录列表</h3>
+                <p id="operations-list-meta" class="auth-subtext">加载中...</p>
+              </div>
+            </div>
+            <ul id="operations-log-list" class="operations-log-list"></ul>
+          </section>
+
+          <section class="operations-card operations-detail-card">
+            <div class="operations-card-header">
+              <div>
+                <h3>记录详情</h3>
+                <p id="operations-detail-meta" class="auth-subtext">请选择一条记录查看详情</p>
+              </div>
+              <span id="operations-detail-result" class="operations-result-badge">-</span>
+            </div>
+            <div id="operations-empty-detail" class="operations-empty-detail">
+              当前没有可展示的记录，请调整筛选条件后重试。
+            </div>
+            <div id="operations-detail-body" class="operations-detail-body hidden">
+              <p id="operations-detail-summary" class="operations-detail-summary"></p>
+              <section class="operations-detail-section">
+                <h4>关键字段高亮</h4>
+                <div id="operations-highlight-list" class="operations-highlight-list"></div>
+              </section>
+              <dl class="operations-detail-grid">
+                <div class="operations-detail-item">
+                  <dt>日志编号</dt>
+                  <dd id="detail-log-id">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>操作模块</dt>
+                  <dd id="detail-operation-module">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>操作类型</dt>
+                  <dd id="detail-operation-type">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>业务对象类型</dt>
+                  <dd id="detail-object-type">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>业务对象 ID</dt>
+                  <dd id="detail-object-id">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>业务对象名称</dt>
+                  <dd id="detail-object-name">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>操作人 ID</dt>
+                  <dd id="detail-operator-id">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>操作人姓名</dt>
+                  <dd id="detail-operator-name">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>操作时间</dt>
+                  <dd id="detail-operated-at">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>操作结果</dt>
+                  <dd id="detail-operation-result">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>客户端 IP</dt>
+                  <dd id="detail-client-ip">-</dd>
+                </div>
+                <div class="operations-detail-item">
+                  <dt>请求来源</dt>
+                  <dd id="detail-request-source">-</dd>
+                </div>
+              </dl>
+              <section class="operations-detail-section">
+                <h4>备注说明</h4>
+                <p id="detail-remark" class="operations-detail-paragraph">-</p>
+              </section>
+              <section class="operations-detail-section">
+                <div class="operations-compare-header">
+                  <h4>关键字段比对</h4>
+                  <span id="operations-compare-meta" class="auth-subtext">未找到可比对记录</span>
+                </div>
+                <div id="operations-compare-empty" class="operations-compare-empty">当前记录暂无同对象上一条操作可供比对。</div>
+                <div id="operations-compare-list" class="operations-compare-list hidden"></div>
+              </section>
+              <section class="operations-detail-section">
+                <h4>扩展上下文</h4>
+                <pre id="detail-extra-context" class="operations-detail-code">-</pre>
+              </section>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="/static/operations.js"></script>
+  </body>
+</html>
