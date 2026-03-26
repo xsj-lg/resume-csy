@@ -11,7 +11,7 @@
 
 | date | version | 对应平台版本 | summary |
 | --- | --- | --- | --- |
-| `2026-03-26` | `0.1.15` | `0.1.15` | 1. 发布评分表分段结构解析增强：上传评分表支持“维度标题行 + 评分项行 + 续行标准”的版式识别。<br>2. 发布评分项归属修复：评分表预览与岗位评分项快照可正确保留维度下评分项与评分标准。<br>3. 发布协作治理执行校验：Agent 每次执行前强制读取 `docs/docs-index.md` 并完整重读 `docs/00-governance/`。<br>4. 发布 `project-docs` 同步约束：项目文件变更需按映射规则同步更新说明并在交付中披露结果。 |
+| `2026-03-26` | `0.1.15` | `0.1.15` | 1. 发布操作记录页：支持日志查询、详情查看、同对象上一条记录比对与 JSON/CSV 导出。<br>2. 发布工作台最近查看恢复：跨页返回后自动恢复上次查看的候选人/简历上下文。<br>3. 发布自动评分明细复核：总分按评分项累加校验，并完整展示评分项证据与置信度。<br>4. 发布评分表分段结构解析增强与协作治理执行校验补充。<br>5. 明确用户确认“已发布完成”时，文档状态必须同步闭环更新。 |
 | `2026-03-24` | `0.1.14` | `0.1.14` | 1. 发布自动评分输入收敛：评分表去重规范化、结构化候选人信息优先入模、阈值参数一致性与严格 JSON 输出。<br>2. 发布候选人多维筛选增强：支持流程状态、学校、学历、年限、评分区间、上传日期下拉与自定义区间。<br>3. 发布左栏筛选区与面试日历滚动优化：多列排布下支持内部滚动查看。 |
 | `2026-03-24` | `0.1.13` | `0.1.13` | 1. 发布简历结构化抽取与通用信息融合展示：候选人详情页按通用信息统一展示抽取结果并去除同口径重复块。<br>2. 发布抽取刷新联动：点击“更新抽取”后通用信息区域同步刷新。<br>3. 发布兼容保障：历史无结构化数据与抽取失败场景均保留通用信息可用性。<br>4. 对齐历史归档表述：`0.1.9/0.1.10/0.1.11` 能力记录已按已发布状态归档到 `roadmap-01`。 |
 | `2026-03-18` | `0.1.12` | `0.1.12` | 1. 发布岗位管理页面：支持岗位新增/编辑/查看/关闭/复制、流程配置、筛选标准和评分表版本管理。<br>2. 发布岗位关联上传与自动评分：上传简历必须绑定岗位，支持上传后自动评分与手动重评。<br>3. 发布评分结果回显与配置外置：工作台可查看结构化评分结果，LLM 配置外置并支持管理员只读查看。<br>4. 发布后端分层拆分：后端新增控制层/服务层/数据库交互层/工具层，`app/server.py` 收敛为启动入口。<br>5. 补齐 `0.1.11` 已发布能力归档：上传/筛选部门维度与 PDF 核心信息识别。 |
@@ -29,6 +29,7 @@
 | --- | --- | --- | --- |
 | 文档治理闭环 | `available` | `docs/00-governance/*`, `docs/01-requirements/*`, `docs/02-roadmap/*` | 仅覆盖流程治理，不包含业务代码实现。 |
 | 协作治理开工重读与 `project-docs` 同步约束 | `available` | `docs/00-governance/gov-03-agent-collaboration.md`, `project-docs/development/development-and-integration-guidelines.md` | 仅约束仓库协作与文档同步流程，不直接提供业务功能。 |
+| 用户确认发布后的状态同步闭环 | `available` | `docs/00-governance/gov-02-requirements.md`, `docs/00-governance/gov-03-agent-collaboration.md`, `docs/02-roadmap/*`, `docs/01-requirements/*` | 依赖用户明确给出“已发布完成”类确认；确认后需同步更新 `roadmap-00/roadmap-01/req-01/req-02`。 |
 | AIS 简历筛选工作台（三栏） | `available` | `web/index.html`, `web/app.js`, `web/styles.css` | 当前为本地前后端一体形态。 |
 | 简历筛选后端与 SQLite 持久化 | `available` | `app/server.py`, `app/backend/services/recruitment_service.py`, `app/backend/repositories/sqlite_helpers.py` | 当前为本地单机服务，不含远程部署。 |
 | 后端分层架构（控制/服务/仓储/工具） | `available` | `app/server.py`, `app/backend/controllers/resume_controller.py`, `app/backend/services/recruitment_service.py`, `app/backend/repositories/sqlite_helpers.py`, `app/backend/utils/time_utils.py` | 现阶段仍在同一代码仓内单体运行，尚未拆分为独立部署单元。 |
@@ -45,6 +46,7 @@
 | 评分表分段结构解析与维度归属修复 | `available` | `app/backend/services/score_table_service.py`, `app/backend/services/job_service.py` | 支持“维度标题行 + 评分项行 + 续行标准”版式；极端复杂的合并单元格评分表仍建议人工复核。 |
 | 大模型配置外置与管理员只读查看 | `available` | `config/llm-config.json`, `config/llm-prompts.json`, `app/server.py`, `web/users.html`, `web/users.js` | 仅提供只读查看，在线修改仍需手动更新配置文件并重启服务。 |
 | 默认管理员首登改密 | `available` | `app/server.py`, `web/login.html`, `web/login.js` | 仅内置单个默认管理员种子策略。 |
+| 操作记录页与统一日志审计 | `available` | `web/operations.html`, `web/operations.js`, `app/backend/controllers/operation_log_controller.py`, `app/backend/services/operation_log_service.py` | 当前仅管理员可见；导出支持 `JSON/CSV`，后端异常时前端有本地兜底展示。 |
 | 简历流入日期记录与回填 | `available` | `app/server.py`, `web/app.js` | 以日粒度 `YYYYMMDD` 存储，展示为 `YYYY-MM-DD`。 |
 | 候选人列表流入日期标签 | `available` | `web/app.js`, `web/styles.css` | 左侧标签仅展示日期文本，不支持按该标签筛选。 |
 | 前端批量上传 PDF | `available` | `web/index.html`, `web/app.js`, `web/styles.css`, `app/server.py` | 当前为前端顺序提交，未实现并发队列与断点续传。 |
@@ -58,6 +60,7 @@
 | 阶段/通用信息分离保存 | `available` | `web/app.js`, `web/index.html`, `app/server.py` | 提供阶段信息与通用信息分离保存入口；保留旧聚合接口兼容。 |
 | 候选人列表名称/岗位筛选 | `available` | `app/server.py`, `web/app.js`, `web/index.html` | 支持名称模糊筛选、岗位精确/模糊筛选和组合筛选，支持一键重置。 |
 | 候选人列表多维筛选（含上传日期） | `available` | `web/index.html`, `web/app.js`, `web/styles.css`, `app/backend/controllers/candidate_controller.py`, `app/backend/services/candidate_service.py`, `project-docs/api/api-documentation.md` | 支持 `stage_status`、`school`、`education`、`duration`、`score_min/score_max`、`upload_date/uploaded_from/uploaded_to`；筛选质量依赖候选人字段完整度。 |
+| 工作台最近查看候选人恢复 | `available` | `web/index.html`, `web/app.js`, `project-docs/development/development-and-integration-guidelines.md` | 依赖前端本地存储；当候选人已删除或当前不可见时自动降级到首条可用记录或空态。 |
 | 候选人筛选计数联动 | `available` | `app/server.py`, `web/app.js` | 返回并展示 `total_count/filtered_count`；界面显示可见数、筛选结果数与全量数。 |
 | 左栏排序下拉与模块折叠 | `available` | `web/index.html`, `web/app.js`, `web/styles.css` | 左栏头部提供排序下拉；筛选区与面试日历支持展开/收起。 |
 | 左侧候选人管理增强（状态细分/星标/排序/隐藏） | `available` | `web/index.html`, `web/app.js`, `web/styles.css`, `app/server.py` | 候选人状态支持 `待初筛` 与 `未通过X`；未通过候选人默认隐藏，仅在“显示全部”开关开启后展示。 |
@@ -67,12 +70,13 @@
 | 简历上传岗位关联与候选人岗位回显 | `available` | `web/app.js`, `app/server.py` | 上传时依赖后端岗位接口已有岗位数据；无岗位时上传会被拦截。 |
 | 候选人自动评分与手动重评 | `available` | `web/app.js`, `app/server.py`, `config/llm-prompts.json` | LLM 不可用时自动降级规则评分，评分质量受简历文本提取质量影响。 |
 | 自动评分输入收敛与严格 JSON 输出 | `available` | `app/backend/services/recruitment_service.py`, `app/backend/services/auto_score_service.py`, `web/app.js`, `config/llm-prompts.json` | 评分稳定性提升依赖结构化简历字段质量；字段缺失场景采用保守降级策略。 |
+| 自动评分总分校验与评分项明细展示 | `available` | `app/backend/services/auto_score_service.py`, `web/app.js` | 历史无评分项明细的记录按兼容模式展示；完整复核能力依赖评分结果中存在评分项明细。 |
 
 ## 4. 完整更新历史（全量）
 
 | version | date | 对应平台版本 | detail |
 | --- | --- | --- | --- |
-| `0.1.15` | `2026-03-26` | `0.1.15` | 发布评分表分段结构解析增强：上传评分表支持维度标题行/评分项行/续行标准版式识别，评分表预览与岗位评分项快照可正确保留维度与评分项归属；发布协作治理增强：执行前强制重读 `docs/docs-index.md` 与 `docs/00-governance/`，项目文件变更时需同步更新 `project-docs` 并在交付中说明。 |
+| `0.1.15` | `2026-03-26` | `0.1.15` | 发布操作记录页、工作台最近查看恢复、自动评分总分校验与评分项明细展示、评分表分段结构解析增强与协作治理补充；明确用户确认“已发布完成”后文档状态需同步闭环更新。 |
 | `0.1.14` | `2026-03-24` | `0.1.14` | 发布自动评分输入收敛与严格 JSON 输出能力；发布候选人多维筛选（含上传日期）与左栏滚动优化。 |
 | `0.1.13` | `2026-03-19` | `0.1.13` | 发布简历结构化抽取与通用信息融合展示能力：候选人详情页统一按通用信息展示抽取字段、去除同口径重复展示，并支持更新抽取后的同步刷新与失败降级可用。 |
 | `0.1.12` | `2026-03-18` | `0.1.12` | 发布岗位管理、评分表版本管理、岗位关联上传、自动评分与手动重评能力，并完成大模型配置外置与管理员只读配置查看；补充后端分层拆分能力（入口收敛 + 控制层/服务层/仓储层/工具层）。 |
