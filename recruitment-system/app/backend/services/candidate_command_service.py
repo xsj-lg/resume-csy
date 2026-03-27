@@ -201,7 +201,9 @@ def create_candidate_from_upload(
 
     resume_text = ""
     try:
-        resume_text = candidate_service.extract_pdf_text(target_path)
+        with connect_db(candidate_service.DB_PATH) as conn:
+            resume_text = candidate_service.get_candidate_resume_text(conn, candidate_id=candidate_id)
+            conn.commit()
         _store_basic_resume_info(candidate_id, resume_text)
     except Exception as exc:
         print(f"[basic extract] failed for {candidate_id}: {exc}")
@@ -284,19 +286,30 @@ def _store_basic_resume_info(candidate_id: str, resume_text: str) -> None:
             (candidate_id,),
         ).fetchone()
         structured = candidate_service.json_loads_or_empty_object(row[0] if row else "")
+        basic_raw = structured.get("basic")
+        basic = basic_raw if isinstance(basic_raw, dict) else {}
+        if phone:
+            basic["phone"] = phone
+        elif not str(basic.get("phone", "")).strip():
+            basic["phone"] = str(structured.get("basic_contact_phone", "")).strip()
+        if email:
+            basic["email"] = email
+        elif not str(basic.get("email", "")).strip():
+            basic["email"] = str(structured.get("basic_contact_email", "")).strip()
+        structured["basic"] = basic
+        if snippet and not str(structured.get("summary", "")).strip():
+            structured["summary"] = snippet
         structured["basic_snippet"] = snippet
         structured["basic_contact_phone"] = phone
         structured["basic_contact_email"] = email
         conn.execute(
             """
             UPDATE candidate_profiles
-            SET resume_structured_json = ?, phone_number = ?, email = ?, updated_at = ?
+            SET resume_structured_json = ?, updated_at = ?
             WHERE candidate_id = ?
             """,
             (
                 json.dumps(structured, ensure_ascii=False, separators=(",", ":")),
-                phone,
-                email,
                 now,
                 candidate_id,
             ),

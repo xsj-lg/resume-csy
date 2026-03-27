@@ -23,7 +23,8 @@ def list_candidate_file_rows(
     rows = conn.execute(
         f"""
         SELECT candidate_id, candidate_name, original_filename, storage_rel_path,
-               inflow_date, uploaded_at, uploaded_by, is_active
+               inflow_date, resume_parsed_text, resume_parser_payload_json, resume_parser_updated_at,
+               uploaded_at, uploaded_by, is_active
         FROM candidate_files
         {where_sql}
         ORDER BY uploaded_at ASC
@@ -37,9 +38,12 @@ def list_candidate_file_rows(
             "storage_rel_path": row[3],
             "inflow_date": candidate_service.normalize_date_tag(row[4] or "")
             or candidate_service.infer_inflow_date_from_rel_path(row[3] or ""),
-            "uploaded_at": row[5],
-            "uploaded_by": row[6],
-            "is_active": int(row[7] or 0),
+            "resume_parsed_text": row[5] or "",
+            "resume_parser_payload_json": row[6] or "",
+            "resume_parser_updated_at": row[7] or "",
+            "uploaded_at": row[8],
+            "uploaded_by": row[9],
+            "is_active": int(row[10] or 0),
         }
         for row in rows
     ]
@@ -50,7 +54,8 @@ def get_candidate_file_by_id(conn: sqlite3.Connection, candidate_id: str) -> dic
     row = conn.execute(
         """
         SELECT candidate_id, candidate_name, original_filename, storage_rel_path,
-               inflow_date, uploaded_at, uploaded_by, is_active
+               inflow_date, resume_parsed_text, resume_parser_payload_json, resume_parser_updated_at,
+               uploaded_at, uploaded_by, is_active
         FROM candidate_files
         WHERE candidate_id = ?
         """,
@@ -65,9 +70,12 @@ def get_candidate_file_by_id(conn: sqlite3.Connection, candidate_id: str) -> dic
         "storage_rel_path": row[3],
         "inflow_date": candidate_service.normalize_date_tag(row[4] or "")
         or candidate_service.infer_inflow_date_from_rel_path(row[3] or ""),
-        "uploaded_at": row[5],
-        "uploaded_by": row[6],
-        "is_active": int(row[7] or 0),
+        "resume_parsed_text": row[5] or "",
+        "resume_parser_payload_json": row[6] or "",
+        "resume_parser_updated_at": row[7] or "",
+        "uploaded_at": row[8],
+        "uploaded_by": row[9],
+        "is_active": int(row[10] or 0),
     }
 
 
@@ -79,7 +87,8 @@ def get_candidate_file_by_original_filename(
     row = conn.execute(
         """
         SELECT candidate_id, candidate_name, original_filename, storage_rel_path,
-               inflow_date, uploaded_at, uploaded_by, is_active
+               inflow_date, resume_parsed_text, resume_parser_payload_json, resume_parser_updated_at,
+               uploaded_at, uploaded_by, is_active
         FROM candidate_files
         WHERE original_filename = ? COLLATE NOCASE
         """,
@@ -94,9 +103,12 @@ def get_candidate_file_by_original_filename(
         "storage_rel_path": row[3],
         "inflow_date": candidate_service.normalize_date_tag(row[4] or "")
         or candidate_service.infer_inflow_date_from_rel_path(row[3] or ""),
-        "uploaded_at": row[5],
-        "uploaded_by": row[6],
-        "is_active": int(row[7] or 0),
+        "resume_parsed_text": row[5] or "",
+        "resume_parser_payload_json": row[6] or "",
+        "resume_parser_updated_at": row[7] or "",
+        "uploaded_at": row[8],
+        "uploaded_by": row[9],
+        "is_active": int(row[10] or 0),
     }
 
 

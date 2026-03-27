@@ -36,7 +36,7 @@
 | `candidate_command_service.py` | 真实实现 | 上传、同步、删除、异步任务调度 |
 | `candidate_workflow_service.py` | 真实实现 | 权限、详情、流程流转、保存 |
 | `candidate_domain_service.py` | 真实实现 | 状态机、字段校验、状态推导 |
-| `resume_extract_service.py` | 真实实现 | PDF 文本提取、结构化抽取 |
+| `resume_extract_service.py` | 真实实现 | 解析服务接口读取 PDF 内容、数据库缓存复用、结构化抽取 |
 | `auto_score_service.py` | 真实实现 | 自动评分、规则降级、评分落库 |
 | `llm_service.py` | 真实实现 | LLM 配置、Prompt、流式调用 |
 | `db_service.py` | 真实实现 | 建表、迁移、兼容升级 |
@@ -90,6 +90,7 @@
 | --- | --- |
 | `llm-config.json` | LLM 运行配置 |
 | `llm-prompts.json` | Prompt 模板配置 |
+| `pdf-parser-config.json` | PDF 解析服务运行配置 |
 
 ### 4.2 `scripts/`
 

@@ -1344,8 +1344,8 @@ function renderResumeStructured(profile) {
   const errorText = extractError ? ` · 错误：${extractError}` : "";
   els.resumeExtractMeta.textContent = `状态：${status} · 来源：${source} · 模型：${model} · 更新时间：${updatedText}${errorText}`;
 
-  setExtractFieldValue(els.extractPhone, basic.phone);
-  setExtractFieldValue(els.extractEmail, basic.email);
+  setExtractFieldValue(els.extractPhone, basic.phone || structured.basic_contact_phone || "");
+  setExtractFieldValue(els.extractEmail, basic.email || structured.basic_contact_email || "");
   setExtractFieldValue(els.extractLocation, basic.location || profile?.base_location || "");
   setExtractFieldValue(els.extractMajor, basic.major);
   setExtractFieldValue(els.extractSkills, Array.isArray(structured.skills) ? structured.skills.join("\n") : "");
@@ -1353,7 +1353,7 @@ function renderResumeStructured(profile) {
     els.extractCertificates,
     Array.isArray(structured.certificates) ? structured.certificates.join("\n") : "",
   );
-  setExtractFieldValue(els.extractSummary, structured.summary);
+  setExtractFieldValue(els.extractSummary, structured.summary || structured.basic_snippet || "");
   setExtractFieldValue(
     els.extractEducation,
     buildResumeLines(structured.education, (item, idx) => {

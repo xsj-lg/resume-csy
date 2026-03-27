@@ -169,6 +169,7 @@ from .role_user_service import (
 from .resume_extract_service import (
     extract_and_store_resume_profile,
     extract_pdf_text,
+    get_candidate_resume_text,
     trigger_resume_extract_for_candidate,
 )
 from .score_table_service import (

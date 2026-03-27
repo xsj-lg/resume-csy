@@ -298,7 +298,7 @@ def call_llm_chat_stream(
     temperature: float,
     max_tokens: int,
     enable_thinking: bool = True,
-) -> tuple[str, str, str, dict[str, Any]]:
+) -> tuple[str, str, str]:
     def _safe_int(value: Any, default: int) -> int:
         try:
             return int(value)
@@ -550,21 +550,12 @@ def call_llm_chat_stream(
     base_url = _normalize_llm_base_url(str(runtime.get("base_url", "")).strip())
 
     if not api_key or not model or not base_url:
-        return "", "", "LLM 配置不完整", {
-            "model": model,
-            "base_url": base_url,
-            "error_stage": "config_check",
-        }
+        return "", "", "LLM 配置不完整"
 
     try:
         from openai import OpenAI
     except Exception as exc:
-        return "", "", f"OpenAI SDK 不可用: {exc}", {
-            "model": model,
-            "base_url": base_url,
-            "error_stage": "sdk_import",
-            "exception": f"{type(exc).__name__}: {exc}",
-        }
+        return "", "", f"OpenAI SDK 不可用: {exc}"
 
     timeout_seconds = _safe_int(runtime.get("timeout_seconds", 30) or 30, 30)
     try:
@@ -574,13 +565,7 @@ def call_llm_chat_stream(
             timeout=timeout_seconds,
         )
     except Exception as exc:
-        return "", "", f"OpenAI Client 初始化失败: {exc}", {
-            "model": model,
-            "base_url": base_url,
-            "timeout_seconds": timeout_seconds,
-            "error_stage": "client_init",
-            "exception": f"{type(exc).__name__}: {exc}",
-        }
+        return "", "", f"OpenAI Client 初始化失败: {exc}"
 
     debug_info = _build_debug_info()
     content_text, reasoning_text, error_text, debug_info = _stream_once(
@@ -604,7 +589,7 @@ def call_llm_chat_stream(
         )
         if retry_content and not retry_error:
             retry_debug_info["warnings"].append("关闭 thinking 后降级重试成功")
-            return retry_content, retry_reasoning, "", retry_debug_info
+            return retry_content, retry_reasoning, ""
         debug_info["warnings"].append(
             f"关闭 thinking 降级重试失败: {retry_error or '仍缺少 content'}"
         )

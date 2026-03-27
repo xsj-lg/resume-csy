@@ -41,6 +41,9 @@ def init_db() -> None:
                 original_filename TEXT NOT NULL UNIQUE,
                 storage_rel_path TEXT NOT NULL UNIQUE,
                 inflow_date TEXT NOT NULL DEFAULT '',
+                resume_parsed_text TEXT NOT NULL DEFAULT '',
+                resume_parser_payload_json TEXT NOT NULL DEFAULT '',
+                resume_parser_updated_at TEXT NOT NULL DEFAULT '',
                 uploaded_at TEXT NOT NULL,
                 uploaded_by TEXT NOT NULL DEFAULT '',
                 is_active INTEGER NOT NULL DEFAULT 1
@@ -257,6 +260,18 @@ def init_db() -> None:
         if not has_column(conn, "candidate_files", "inflow_date"):
             conn.execute(
                 "ALTER TABLE candidate_files ADD COLUMN inflow_date TEXT NOT NULL DEFAULT ''"
+            )
+        if not has_column(conn, "candidate_files", "resume_parsed_text"):
+            conn.execute(
+                "ALTER TABLE candidate_files ADD COLUMN resume_parsed_text TEXT NOT NULL DEFAULT ''"
+            )
+        if not has_column(conn, "candidate_files", "resume_parser_payload_json"):
+            conn.execute(
+                "ALTER TABLE candidate_files ADD COLUMN resume_parser_payload_json TEXT NOT NULL DEFAULT ''"
+            )
+        if not has_column(conn, "candidate_files", "resume_parser_updated_at"):
+            conn.execute(
+                "ALTER TABLE candidate_files ADD COLUMN resume_parser_updated_at TEXT NOT NULL DEFAULT ''"
             )
         if not has_column(conn, "users", "role_code"):
             conn.execute("ALTER TABLE users ADD COLUMN role_code TEXT NOT NULL DEFAULT ''")

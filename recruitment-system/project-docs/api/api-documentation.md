@@ -135,8 +135,8 @@
 | PUT | `/api/evaluations/{candidate_id}/rounds/{stage}` | 可写轮次角色 | 保存单轮面评 |
 | PUT | `/api/evaluations/{candidate_id}` | 可写档案角色 | 同时保存档案与面评 |
 | POST | `/api/evaluations/{candidate_id}/transition` | 可推进流程角色 | 推进阶段 |
-| POST | `/api/evaluations/{candidate_id}/auto-score` | 已登录且可见 | 重新触发自动评分 |
-| POST | `/api/evaluations/{candidate_id}/resume-extract` | 已登录且可见 | 重新触发简历结构化抽取 |
+| POST | `/api/evaluations/{candidate_id}/auto-score` | 已登录且可见 | 重新触发自动评分，优先复用数据库中的简历解析缓存 |
+| POST | `/api/evaluations/{candidate_id}/resume-extract` | 已登录且可见 | 重新触发简历结构化抽取，优先复用数据库中的简历解析缓存 |
 
 ## 9. 常见错误与权限码
 

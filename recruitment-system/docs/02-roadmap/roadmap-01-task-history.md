@@ -2,24 +2,25 @@
 
 ## 1. 文档信息
 
-- 当前版本: `0.1.15`
-- 对应平台版本: `0.1.15`
+- 当前版本: `0.1.16`
+- 对应平台版本: `0.1.16`
 - 作用: 记录已发布版本的历史任务与需求完成事实（唯一历史事实源）。
 
 ### 最近更新（最新 5 条）
 
 | date | version | 对应平台版本 | summary |
 | --- | --- | --- | --- |
+| `2026-03-27` | `0.1.16` | `0.1.16` | 1. 归档已发布需求 `REQ-v0.1.16-001`：PDF 读取主链路切换为本地解析服务接口。<br>2. 归档已发布需求 `REQ-v0.1.16-002`：PDF 解析文本与原始结果落库缓存，自动评分/结构化抽取优先复用数据库结果。<br>3. 归档已发布需求 `REQ-v0.1.16-003`：结构化抽取回显与通用信息字段按“有值覆盖、无值保留”融合，并同步候选人名称。<br>4. 归档已发布需求 `REQ-v0.1.16-004`：PDF 解析服务配置文件化，服务失败时自动回退旧工具并继续写库。<br>5. 发布后已完成 `req-01/req-02` 回填，并切换 `req-00/roadmap-00` 到下一目标版本 `0.1.17`。 |
 | `2026-03-26` | `0.1.15` | `0.1.15` | 1. 补录已发布需求 `REQ-v0.1.15-001`：新增操作记录页面并完成统一日志留痕、详情比对与导出能力。<br>2. 补录已发布需求 `REQ-v0.1.15-002`：工作台支持记住并恢复上次查看的候选人/简历记录。<br>3. 补录已发布需求 `REQ-v0.1.15-003`：自动评分结果按评分项累加校验总分，并在工作台展示完整评分项明细。<br>4. 补录已发布需求 `REQ-v0.1.15-004`：上传评分表解析支持“维度标题行 + 评分项行 + 续行标准”的分段结构。<br>5. 补录已发布需求 `REQ-v0.1.15-005`：协作治理新增执行前强制重读 `docs/00-governance/` 与 `project-docs` 同步要求，并明确用户确认“已发布完成”后必须同步完成状态迁移。 |
 | `2026-03-24` | `0.1.14` | `0.1.14` | 1. 归档 `REQ-v0.1.14-001/002` 并发布 `v0.1.14`。<br>2. 发布后已回填 `req-01/req-02`。<br>3. 归档完成后已切换 `req-00/roadmap-00` 至下一目标版本 `0.1.15`。 |
 | `2026-03-24` | `0.1.13` | `0.1.13` | 1. 归档 `REQ-v0.1.13-002/003` 并补齐 `v0.1.13` 发布事实。<br>2. 补全 `v0.1.9/v0.1.10/v0.1.11` 历史归档，统一旧版本状态为 `DONE/RELEASED`。<br>3. 发布后回填记录已与 `req-01/req-02` 对齐。 |
 | `2026-03-18` | `0.1.12` | `0.1.12` | 1. 归档 `REQ-v0.1.12-001` 并发布 `v0.1.12`。<br>2. 归档 `REQ-v0.1.12-002`（后端分层拆分）并完成 `req-01/req-02` 回填。 |
-| `2026-03-17` | `0.1.11` | `0.1.11` | 1. 归档 `REQ-v0.1.11-001/002` 并补齐 `v0.1.11` 发布事实。<br>2. 发布后回填记录已与 `req-01/req-02` 对齐。 |
 
 ## 2. Roadmap History
 
 | roadmap_version | status | date | summary | refs |
 | --- | --- | --- | --- | --- |
+| `v0.1.16` | `RELEASED` | `2026-03-27` | 发布 PDF 解析链路增强：PDF 读取切换为本地解析服务接口，解析结果与原始载荷落库缓存，结构化抽取与自动评分优先复用缓存；发布结构化抽取回显与通用信息融合增强；发布 PDF 解析配置文件外置与失败自动回退旧工具能力。 | `app/backend/services/resume_extract_service.py`, `app/backend/services/candidate_command_service.py`, `app/backend/services/candidate_workflow_service.py`, `app/backend/services/auto_score_service.py`, `app/backend/controllers/candidate_controller.py`, `web/app.js`, `config/pdf-parser-config.json`, `docs/01-requirements/*`, `docs/02-roadmap/*`, `project-docs/*` |
 | `v0.1.15` | `RELEASED` | `2026-03-26` | 补录发布操作记录页面：新增管理员可见的操作记录页、统一日志记录表、日志详情/比对/导出与关键链路留痕；补录发布工作台最近查看恢复：跨页返回时自动恢复上次查看候选人与简历上下文；补录发布自动评分明细增强：总分按评分项重算并完整展示维度下评分项；补录发布评分表分段结构解析增强与协作治理增强。 | `web/operations.html`, `web/operations.js`, `web/app.js`, `app/backend/controllers/operation_log_controller.py`, `app/backend/services/operation_log_service.py`, `app/backend/services/auto_score_service.py`, `app/backend/controllers/auth_controller.py`, `app/backend/controllers/user_role_controller.py`, `app/backend/controllers/job_controller.py`, `app/backend/controllers/candidate_controller.py`, `docs/00-governance/gov-02-requirements.md`, `docs/00-governance/gov-03-agent-collaboration.md`, `project-docs/development/development-and-integration-guidelines.md`, `docs/01-requirements/*`, `docs/02-roadmap/*` |
 | `v0.1.14` | `RELEASED` | `2026-03-24` | 发布自动评分输入收敛与候选人筛选增强能力：评分表去重规范化、结构化候选人信息优先入模、阈值参数一致性与严格 JSON 输出落地；候选人列表支持流程状态、学校、学历、年限、评分区间、上传日期筛选，并完成左栏筛选区/面试日历滚动优化。 | `web/index.html`, `web/app.js`, `web/styles.css`, `app/backend/controllers/candidate_controller.py`, `app/backend/services/candidate_service.py`, `app/backend/services/recruitment_service.py`, `docs/01-requirements/*`, `docs/02-roadmap/*`, `project-docs/api/api-documentation.md` |
 | `v0.1.13` | `RELEASED` | `2026-03-19` | 发布岗位信息后端存储与评分表解析预览、简历结构化抽取与通用信息融合展示能力：岗位管理以后端持久化数据为事实源，评分表支持上传解析预览，候选人详情页统一按“通用信息”口径展示结构化抽取结果并保留抽取更新入口与状态提示。 | `web/index.html`, `web/app.js`, `web/jobs.html`, `web/jobs.js`, `app/backend/services/recruitment_service.py`, `docs/01-requirements/*`, `docs/02-roadmap/*` |
@@ -37,6 +38,15 @@
 | `v0.1.1` | `RELEASED` | `2026-02-28` | 发布简历筛选系统首版（候选人列表/PDF 预览/人工录入/SQLite、一键启动）。 | `app/server.py`, `web/*`, `scripts/resume_app_up.sh` |
 
 ## 3. 已完成任务明细（历史）
+
+### v0.1.16（已发布）
+
+| requirement_id | status | item | evidence_refs | done_definition |
+| --- | --- | --- | --- | --- |
+| `REQ-v0.1.16-001` | `DONE` | PDF 读取切换为解析服务接口 | `app/backend/services/resume_extract_service.py`, `project-docs/development/development-and-integration-guidelines.md`, `docs/01-requirements/req-00-draft.md`, `docs/02-roadmap/roadmap-00-todolist.md` | PDF 读取主链路已切换为本地解析服务接口，能够解析 `pages/paragraphs/textPara.content` 并继续支撑基础信息识别、结构化抽取与自动评分链路。 |
+| `REQ-v0.1.16-002` | `DONE` | PDF 解析结果持久化与数据库复用 | `app/backend/services/db_service.py`, `app/backend/services/resume_extract_service.py`, `app/backend/services/auto_score_service.py`, `app/backend/controllers/candidate_controller.py`, `docs/01-requirements/req-00-draft.md`, `docs/02-roadmap/roadmap-00-todolist.md` | `candidate_files` 已持久化 PDF 解析文本、原始结果与更新时间；自动评分、结构化抽取与详情读取优先复用数据库缓存，且不会因评分阶段异常导致缓存回滚。 |
+| `REQ-v0.1.16-003` | `DONE` | 结构化抽取回显与通用信息字段替换优化 | `app/backend/services/candidate_command_service.py`, `app/backend/services/resume_extract_service.py`, `app/backend/services/candidate_workflow_service.py`, `app/backend/controllers/candidate_controller.py`, `web/app.js`, `docs/01-requirements/req-00-draft.md`, `docs/02-roadmap/roadmap-00-todolist.md` | 上传后规则初抽结果可即时回显；大模型抽取成功后按字段级“有值覆盖、无值保留”回写通用信息，并同步候选人主名称字段。 |
+| `REQ-v0.1.16-004` | `DONE` | PDF 解析配置外置与失败回退 | `config/pdf-parser-config.json`, `app/backend/services/resume_extract_service.py`, `project-docs/operations/deployment-and-operations-guide.md`, `docs/01-requirements/req-00-draft.md`, `docs/02-roadmap/roadmap-00-todolist.md` | PDF 解析服务运行参数已独立外置；当解析服务不可达、超时、异常或空结果时，会自动回退旧的 PDF 文本提取工具，并把结果与来源信息继续写入数据库缓存。 |
 
 ### v0.1.15（已发布补录）
 

@@ -71,6 +71,12 @@ bash scripts/resume_app_up.sh
 2. 上传时若岗位启用自动评分，是否自动写入评分结果。
 3. 手动触发 `/auto-score` 是否更新 AI 评分区块。
 4. LLM 不可用时是否回退到规则评分，而不是整链路报错。
+5. 本地 PDF 解析服务 `http://127.0.0.1:7642/ais/parser/syncParseFile` 是否可达，且能返回包含 `pages[].paragraphs[].textPara.content` 的 JSON 结果。
+6. 首次解析后是否把文本和原始结果写入 `candidate_files`，再次触发自动评分/详情加载时是否优先复用数据库缓存。
+7. 自动评分过程中即使 LLM 调用异常，`candidate_files` 中的解析缓存也不应丢失或回滚。
+8. 简历刚上传完成时，规则初抽的手机号、邮箱和摘要是否已先写入 `resume_structured_json` 并可在页面回显。
+9. 大模型结构化抽取完成后，页面字段是否遵守“有值覆盖、无值保留”，空值不会覆盖规则初抽或人工已有值。
+10. 模拟本地 PDF 解析服务不可达或超时后，系统是否会自动回退旧的 PDF 文本提取工具，并继续把结果写入 `candidate_files`。
 
 ### 3.5 操作记录页
 
@@ -162,6 +168,21 @@ node --check web/operations.js
 - Prompt 配置默认来自 `config/llm-prompts.json`
 - `/api/settings/llm-config` 只返回可公开的运行摘要，不回传实际密钥
 - 协作上仍推荐使用环境变量，而不是把密钥写进仓库文件
+
+## 8.5 PDF 解析服务协作约定
+
+- 简历 PDF 文本读取当前优先通过本地解析服务完成，而不是直接使用本地 `pypdf` 链路。
+- 默认配置文件路径：`config/pdf-parser-config.json`
+- 默认解析服务地址：`http://127.0.0.1:7642/ais/parser/syncParseFile`
+- 运行时优先读取 `pdf-parser-config.json` 中的 `service_url`、`timeout_seconds` 和 `fallback_enabled`。
+- 可通过环境变量 `RESUME_APP_PDF_PARSER_CONFIG_PATH` 覆盖 PDF 解析配置文件路径。
+- 可通过环境变量 `RESUME_APP_PDF_PARSER_URL`、`RESUME_APP_PDF_PARSER_TIMEOUT_SECONDS`、`RESUME_APP_PDF_PARSER_FALLBACK_ENABLED` 覆盖单项运行参数。
+- 解析服务返回结果以 `pages[].paragraphs[].textPara.content` 为主要文本来源，联调时应优先检查该结构是否稳定。
+- 首次解析成功后，会将解析文本和原始结果缓存到 `candidate_files`；后续自动评分、详情兜底抽取与再次读取文本时优先复用数据库缓存。
+- 当解析服务不可达、超时、返回异常状态、非法 JSON 或空结果时，会自动回退旧的 PDF 文本提取工具，并将回退文本与来源信息同样写入 `candidate_files`。
+- 手动调用 `/api/evaluations/{candidate_id}/resume-extract` 时，若数据库中已有可用解析缓存，则结构化抽取会直接复用缓存，不再默认重新请求解析服务。
+- 上传完成后的规则初抽会先把手机号、邮箱和摘要写入 `candidate_profiles.resume_structured_json`，用于页面即时回显。
+- 大模型结构化抽取成功后，会在保留既有结果的前提下按字段级合并 `resume_structured_json`，仅用非空有效值覆盖原字段。
 
 ## 9. 当前技术限制
 

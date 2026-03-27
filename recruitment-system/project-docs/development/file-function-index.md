@@ -136,6 +136,7 @@
 - 主要功能：
   - 扫描本地简历目录
   - 上传创建候选人
+  - 在上传后写入规则初抽得到的手机号、邮箱和摘要兜底结果
   - 删除候选人及关联文件
   - 调度异步抽取和自动评分
 
@@ -247,13 +248,19 @@
 - 作用：简历结构化抽取。
 - 关键入口：
   - `extract_pdf_text`
+  - `get_candidate_resume_text`
   - `normalize_resume_structured_payload`
   - `extract_and_store_resume_profile`
   - `trigger_resume_extract_for_candidate`
 - 主要功能：
-  - PDF 文本提取
+  - 从独立配置文件读取 PDF 解析服务运行参数
+  - 调用本地解析服务接口提取 PDF 文本
+  - 在解析服务失败时回退旧的 PDF 文本提取工具
+  - 维护候选人文件表中的 PDF 解析文本缓存
   - 简历结构化归一化
-  - 调用 LLM 抽取并回写候选人档案
+  - 调用 LLM 抽取并按字段级合并回写候选人档案
+  - 将结构化抽取出的有效姓名同步回写到候选人主名称字段
+  - 保持结构化结果“有值覆盖、无值保留”的替换策略
 
 ### `app/backend/services/llm_service.py`
 

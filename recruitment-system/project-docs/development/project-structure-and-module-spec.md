@@ -100,7 +100,9 @@ recruitment-system/
 - `candidate_domain_service.py`
   - 面试阶段状态机、字段校验、状态推导
 - `resume_extract_service.py`
-  - PDF 文本提取、结构化抽取、抽取写回
+  - 通过本地解析服务接口读取 PDF 内容
+  - 维护 `candidate_files` 中的解析文本/原始结果缓存
+  - 结构化抽取、抽取写回与手动刷新
 - `auto_score_service.py`
   - 自动评分、规则降级、评分结果读写
 - `llm_service.py`
@@ -167,6 +169,8 @@ Repository 层当前仍然较薄，但已经出现明确的候选人仓储边界
   - LLM 运行配置
 - `llm-prompts.json`
   - Prompt 模板配置
+- `pdf-parser-config.json`
+  - PDF 解析服务运行配置
 
 ### 3.8 `data/`
 
@@ -209,13 +213,14 @@ Repository 层当前仍然较薄，但已经出现明确的候选人仓储边界
 1. `app.js` 通过 multipart 调用 `/api/resumes/upload`
 2. `candidate_controller.py` 调用 `candidate_command_service.py`
 3. 候选人档案、岗位快照、简历文件入库
-4. 若岗位开启自动评分，则进一步调用 `auto_score_service.py`
-5. 评分结果落库到 `candidate_auto_scores`
+4. 上传后优先生成并缓存 PDF 解析文本，再异步触发结构化抽取
+5. 若岗位开启自动评分，则进一步调用 `auto_score_service.py`
+6. 评分结果落库到 `candidate_auto_scores`
 
 ### 4.4 候选人详情链路
 
 1. `app.js` 读取 `/api/evaluations/{candidate_id}`
-2. 服务端聚合 `candidate_profiles`、`interview_round_notes`、`candidate_auto_scores`、岗位快照
+2. 服务端聚合 `candidate_profiles`、`candidate_files`、`interview_round_notes`、`candidate_auto_scores`、岗位快照
 3. `candidate_workflow_service.py` 和 `candidate_query_service.py` 协同返回详情
 
 ### 4.5 操作记录链路

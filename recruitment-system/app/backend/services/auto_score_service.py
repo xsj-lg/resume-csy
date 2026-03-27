@@ -23,7 +23,7 @@ from .llm_service import (
 )
 from .resume_extract_service import (
     _normalize_resume_text_items as normalize_resume_text_items,
-    extract_pdf_text,
+    get_candidate_resume_text,
     normalize_resume_structured_payload,
 )
 from .score_table_service import (
@@ -739,10 +739,9 @@ def trigger_auto_score_for_candidate(candidate_id: str) -> dict[str, Any]:
         if not bool(snapshot.get("auto_score_enabled", False)):
             raise ValueError("岗位未启用自动评分")
 
-        file_path = _resolve_storage_path(str(file_row.get("storage_rel_path", "")))
-        if file_path is None or not file_path.exists():
-            raise ValueError("候选人简历文件不存在")
-        resume_text = extract_pdf_text(file_path)
+        resume_text = get_candidate_resume_text(conn, candidate_id=candidate_id)
+        # 解析缓存属于文件级事实，需先提交，避免后续 LLM/评分异常导致缓存回滚丢失。
+        conn.commit()
 
         score_items = dedupe_score_items_for_prompt(snapshot.get("score_items"))
         snapshot["score_items"] = score_items

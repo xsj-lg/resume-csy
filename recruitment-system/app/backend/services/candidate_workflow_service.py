@@ -309,38 +309,36 @@ def get_evaluation(candidate_id: str) -> dict[str, Any] | None:
             and not candidate_service.json_loads_or_empty_object(str(profile.get("resume_structured_json", "")).strip())
             and str(profile.get("resume_extract_status", "")).strip() not in {"success", "failed"}
         ):
-            file_path = candidate_service.resolve_storage_path(str(file_row.get("storage_rel_path", "")))
-            if file_path is not None and file_path.exists():
-                try:
-                    resume_text = candidate_service.extract_pdf_text(file_path)
-                    candidate_service.extract_and_store_resume_profile(
-                        conn,
-                        candidate_id=candidate_id,
-                        filename=str(file_row.get("original_filename", "")).strip(),
-                        candidate_name=str(file_row.get("candidate_name", "")).strip(),
-                        resume_text=resume_text,
-                    )
-                    profile = candidate_service.load_profile(conn, candidate_id)
-                except Exception as exc:
-                    now = utc_now_iso()
-                    conn.execute(
-                        """
-                        UPDATE candidate_profiles
-                        SET resume_extract_status = ?, resume_extract_source = ?, resume_extract_model = ?,
-                            resume_extract_error = ?, resume_extract_updated_at = ?, updated_at = ?
-                        WHERE candidate_id = ?
-                        """,
-                        (
-                            "failed",
-                            "llm",
-                            "",
-                            f"提取异常: {exc}",
-                            now,
-                            now,
-                            candidate_id,
-                        ),
-                    )
-                    profile = candidate_service.load_profile(conn, candidate_id)
+            try:
+                resume_text = candidate_service.get_candidate_resume_text(conn, candidate_id=candidate_id)
+                candidate_service.extract_and_store_resume_profile(
+                    conn,
+                    candidate_id=candidate_id,
+                    filename=str(file_row.get("original_filename", "")).strip(),
+                    candidate_name=str(file_row.get("candidate_name", "")).strip(),
+                    resume_text=resume_text,
+                )
+                profile = candidate_service.load_profile(conn, candidate_id)
+            except Exception as exc:
+                now = utc_now_iso()
+                conn.execute(
+                    """
+                    UPDATE candidate_profiles
+                    SET resume_extract_status = ?, resume_extract_source = ?, resume_extract_model = ?,
+                        resume_extract_error = ?, resume_extract_updated_at = ?, updated_at = ?
+                    WHERE candidate_id = ?
+                    """,
+                    (
+                        "failed",
+                        "llm",
+                        "",
+                        f"提取异常: {exc}",
+                        now,
+                        now,
+                        candidate_id,
+                    ),
+                )
+                profile = candidate_service.load_profile(conn, candidate_id)
         rounds = candidate_service.load_rounds(conn, candidate_id)
         auto_score = candidate_service.load_auto_score_by_candidate(conn, candidate_id)
         conn.commit()

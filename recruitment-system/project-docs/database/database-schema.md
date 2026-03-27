@@ -96,6 +96,9 @@
 | `original_filename` | `TEXT` | 原始文件名 |
 | `storage_rel_path` | `TEXT` | 相对 `data/cv/ais/` 的存储路径 |
 | `inflow_date` | `TEXT` | 简历流入日期标签，通常为 `YYYYMMDD` |
+| `resume_parsed_text` | `TEXT` | 已缓存的 PDF 解析文本，用于后续直接从数据库复用 |
+| `resume_parser_payload_json` | `TEXT` | PDF 解析服务原始返回 JSON 缓存 |
+| `resume_parser_updated_at` | `TEXT` | 最近一次写入解析缓存的时间 |
 | `uploaded_at` | `TEXT` | 上传时间 |
 | `uploaded_by` | `TEXT` | 上传人用户 ID |
 | `is_active` | `INTEGER` | 是否有效 |

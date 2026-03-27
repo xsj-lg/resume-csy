@@ -29,6 +29,7 @@
 | `data/job_templates/` | 评分表文件根目录 |
 | `config/llm-config.json` | LLM 运行配置 |
 | `config/llm-prompts.json` | Prompt 配置 |
+| `config/pdf-parser-config.json` | PDF 解析服务运行配置 |
 | `scripts/resume_app_up.sh` | Linux 启动脚本 |
 | `scripts/package_linux_release.py` | Linux 打包脚本 |
 | `release/linux/` | 打包产物目录 |
@@ -83,6 +84,10 @@ bash scripts/resume_app_up.sh
 | `RESUME_APP_PORT` | `8080` | 服务端口 |
 | `RESUME_APP_ADMIN_PASSWORD` | `admin123456` | 空库初始化时默认管理员密码 |
 | `RESUME_APP_LLM_CONFIG_PATH` | `config/llm-config.json` | 自定义 LLM 配置文件路径 |
+| `RESUME_APP_PDF_PARSER_CONFIG_PATH` | `config/pdf-parser-config.json` | 自定义 PDF 解析配置文件路径 |
+| `RESUME_APP_PDF_PARSER_URL` | 取 `pdf-parser-config.json` | 覆盖 PDF 解析服务地址 |
+| `RESUME_APP_PDF_PARSER_TIMEOUT_SECONDS` | 取 `pdf-parser-config.json` | 覆盖 PDF 解析服务超时秒数 |
+| `RESUME_APP_PDF_PARSER_FALLBACK_ENABLED` | 取 `pdf-parser-config.json` | 覆盖解析服务失败时是否启用旧工具回退 |
 
 ### 4.2 启动脚本附加变量
 
@@ -103,6 +108,9 @@ bash scripts/resume_app_up.sh
    - 简历目录
    - 岗位评分表目录
 4. 若启用 LLM 能力，需准备可用的 `llm-config.json` 与 `llm-prompts.json`。
+5. 准备 `config/pdf-parser-config.json`，并确认其中的 PDF 解析服务地址、超时和回退开关符合当前环境。
+6. 若本地 PDF 解析服务不可用，确保旧的 PDF 文本提取依赖可用；否则简历抽取与自动评分输入会整体失败。
+7. 数据库升级时会自动为 `candidate_files` 增加 PDF 解析缓存字段，首次启动新版本时需保证 SQLite 文件可写。
 
 ## 6. 健康检查与巡检
 
@@ -127,6 +135,8 @@ bash scripts/resume_app_up.sh
 5. `data/cv/ais/` 和 `data/job_templates/` 是否存在。
 6. 若启用 LLM，管理员页能否读取 `/api/settings/llm-config`。
 7. 若需要审计能力，管理员能否访问 `/static/operations.html` 并正常拉取 `/api/operation-logs`。
+8. 本地 PDF 解析服务是否可达，且对真实 PDF 返回合法 JSON。
+9. 抽样检查 `candidate_files.resume_parsed_text` / `resume_parser_payload_json` 是否已写入，确认解析缓存可复用。
 
 ## 7. 日志与故障排查
 
@@ -162,6 +172,9 @@ bash scripts/resume_app_up.sh
 2. 文件大小是否超过 `20MB`。
 3. 上传时是否选择了岗位与部门。
 4. `data/cv/ais/` 是否可写。
+5. `config/pdf-parser-config.json` 是否为合法 JSON，且 `service_url`、`timeout_seconds`、`fallback_enabled` 配置正确。
+6. 本地 PDF 解析服务是否正常运行；若服务异常，确认旧的 PDF 文本提取回退链路是否仍可用。
+7. 若文件仍在但重复评分/抽取明显变慢，检查 `candidate_files` 中是否存在解析缓存写入失败。
 
 #### 评分表上传失败
 
@@ -180,6 +193,7 @@ bash scripts/resume_app_up.sh
 2. 岗位是否有生效评分表版本。
 3. LLM 配置是否有效。
 4. 即使 LLM 不可用，也应确认是否已回退到规则评分而不是整条链路异常。
+5. 若 PDF 解析服务临时不可用，但候选人已存在解析缓存，自动评分仍应可复用数据库中的简历文本继续执行。
 
 ## 8. 备份与恢复
 
