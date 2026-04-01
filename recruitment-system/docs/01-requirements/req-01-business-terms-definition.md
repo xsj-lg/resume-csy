@@ -2,8 +2,8 @@
 
 ## 0. 文档信息
 
-- 当前版本: `0.1.16`
-- 对应平台版本: `0.1.16`
+- 当前版本: `0.1.18`
+- 对应平台版本: `0.1.18`
 - 作用: 定义业务术语、枚举与流程语义，作为需求与实现统一语义基线。
 - GOVERNED_BY: `docs/00-governance/gov-02-requirements.md`
 
@@ -11,6 +11,8 @@
 
 | date | version | 对应平台版本 | summary |
 | --- | --- | --- | --- |
+| `2026-04-01` | `0.1.18` | `0.1.18` | 1. 回填“简历结果导出”术语：新增独立结果导出页、按上传时间筛选、统计总数/已面试完/通过/未通过/四阶段在途数。<br>2. 回填导出口径术语：导出列包含上传时间、简历人员、四阶段面试人、当前状态、AI自动评分与AI自动评分详细描述。<br>3. 回填权限术语：结果导出入口、页面与导出接口仅 `administrator/personnel_manager` 可用；阶段流转中研发经理/算法经理仅在“当前阶段面试人=自己”时可执行通过/未通过，`reset` 仅管理员/HR/人事经理可用。 |
+| `2026-03-30` | `0.1.17` | `0.1.17` | 1. 回填五角色术语：用户角色升级为 `administrator/hr_specialist/personnel_manager/engineering_manager/algorithm_manager`。<br>2. 回填候选人可见范围术语：研发经理与算法经理按 `初筛/一面/二面` 任一阶段被指派关系获得可见权。<br>3. 回填阶段流转术语：`reset` 清空全部阶段面试人并回到 `初筛`，`next` 支持补录 `next_round`。 |
 | `2026-03-27` | `0.1.16` | `0.1.16` | 1. 回填 PDF 解析服务语义：接口读取、独立配置文件、环境变量覆盖与旧工具失败回退。<br>2. 回填解析缓存语义：`candidate_files` 统一承载解析文本、原始载荷、来源与复用策略。<br>3. 回填结构化抽取融合语义：通用信息按“有值覆盖、无值保留”回写，并同步候选人主名称字段。 |
 | `2026-03-26` | `0.1.15` | `0.1.15` | 1. 回填操作记录审计语义：统一日志记录表、日志详情比对、筛选导出与只读审计边界。<br>2. 回填工作台最近查看恢复语义：跨页返回时恢复上次查看候选人/简历上下文并支持安全降级。<br>3. 回填自动评分明细复核语义：评分项得分累加校验维度分和总分，并展示证据与置信度。<br>4. 回填分段评分表解析术语与协作治理补充语义。<br>5. 明确用户确认“已发布完成”时必须同步完成状态迁移。 |
 | `2026-03-24` | `0.1.14` | `0.1.14` | 1. 回填自动评分输入收敛语义：评分表规范化、结构化候选人信息优先入模、阈值策略与严格 JSON 输出约束。<br>2. 回填候选人高级筛选语义：流程状态、学校、学历、年限、评分区间与上传日期筛选口径。<br>3. 回填 `v0.1.14` 发布闭环：`REQ-v0.1.14-001/002` 已归档到 `roadmap-01` 并完成事实回填。 |
@@ -57,9 +59,10 @@
 | --- | --- | --- | --- |
 | `interview_stage` | 面试阶段节点 | `初筛` / `一面` / `二面` / `HR面` | 固定四阶段节点。 |
 | `stage_status` | 阶段节点状态 | `pending` / `passed` / `ended` / `active`(UI态) | `pending`=未到达(灰)，`passed`=通过(绿)，`ended`=该节点结束(红)，`active`=当前进行中未完成(红)。 |
-| `stage_action` | 阶段操作 | `next` / `end` / `reset` | `next` 进入下一阶段（`HR面` 节点显示为 `通过面试`），`end` 在当前阶段结束（按钮文案为 `未通过X`），`reset` 重置阶段状态且不清空轮次面评数据。 |
+| `stage_action` | 阶段操作 | `next` / `end` / `reset` | `next` 从“阶段面评信息”区域推进到下一阶段；若存在下一阶段，则需补录 `next_round`（面试时间与阶段面试人）后再推进。`end` 在当前阶段结束，`reset` 重置阶段状态、清空全部阶段面试人并回到 `初筛`。 |
 | `save_scope` | 保存范围 | `round_only` / `profile_only` | 阶段面评信息与候选人通用信息分离保存。 |
 | `stage_interviewer_user_id` | 阶段面试人 | 有效用户 `id` 或空值 | 每个阶段可分配一位系统内可用用户作为面试人。 |
+| `next_round_payload` | 下一阶段安排载荷 | `stage` / `interview_time` / `interviewer_user_id` / `planned_questions` / `interview_review` | 当点击 `通过并进入下阶段` 且存在下一阶段时，先写入下一阶段轮次安排，再推进流程。 |
 
 ### 3.4 `candidate_list_stage_and_sort`（左侧候选人语义）
 
@@ -85,11 +88,20 @@
 | --- | --- | --- | --- |
 | `auth_mode` | 登录态模式 | `cookie_session` | 使用服务端会话，浏览器 Cookie 持有会话标识。 |
 | `must_change_password` | 首登改密标识 | `0` / `1` | `1` 表示用户必须先修改密码后方可进入业务页面。 |
-| `user_role_code` | 用户角色编码 | `administrator` / `hr_specialist` / `interviewer` / `hiring_manager` | 用户主角色编码，决定用户管理与业务页面权限边界。 |
+| `user_role_code` | 用户角色编码 | `administrator` / `hr_specialist` / `personnel_manager` / `engineering_manager` / `algorithm_manager` | 用户主角色编码，决定用户管理与业务页面权限边界。 |
 | `user_status` | 用户状态 | `active` / `disabled` | `disabled` 用户不可登录。 |
 | `department_scope` | 部门范围 | `销售部` / `研发部` / `算法部` / `项目部` / `人事部` | 用于部门负责人数据范围控制；非部门负责人角色不生效。 |
-| `department_scope_required_rule` | 部门范围必填规则 | `required_when_hiring_manager` | 当 `user_role_code=hiring_manager` 时必须填写部门范围。 |
+| `department_scope_required_rule` | 部门范围必填规则 | `required_when_personnel_manager` | 当 `user_role_code=personnel_manager` 时必须填写部门范围。 |
 | `registration_policy` | 注册策略 | `disabled` | 系统不提供用户自注册入口与接口。 |
+
+### 3.19 `role_visibility_and_assignment_scope`（角色可见范围与指派语义）
+
+| field | name_zh | allowed_values | desc_zh |
+| --- | --- | --- | --- |
+| `full_access_roles` | 全量可见角色 | `administrator` / `hr_specialist` / `personnel_manager` | 这些角色可查看全部候选人列表、详情与简历，不受阶段面试人指派限制。 |
+| `assigned_visibility_roles` | 按指派可见角色 | `engineering_manager` / `algorithm_manager` | 这些角色仅可查看在 `初筛`、`一面`、`二面` 任一阶段曾被指派给自己的候选人。 |
+| `initial_screen_assignee_scope` | 初筛负责人选择范围 | `active_user` | `初筛` 阶段可从全部活跃用户中指定负责人。 |
+| `manager_interview_assignee_scope` | 一面二面负责人选择范围 | `engineering_manager` / `algorithm_manager` | `一面`、`二面` 阶段仅可从研发经理、算法经理中选择负责人。 |
 
 ### 3.7 `resume_ingestion_and_lifecycle`（简历导入与生命周期语义）
 
@@ -251,6 +263,7 @@
 
 | version | date | 对应平台版本 | detail |
 | --- | --- | --- | --- |
+| `0.1.17` | `2026-03-30` | `0.1.17` | 回填五角色与阶段指派术语：用户角色升级为 `administrator/hr_specialist/personnel_manager/engineering_manager/algorithm_manager`，研发经理与算法经理按 `初筛/一面/二面` 任一阶段被指派关系获得候选人可见权；回填阶段流转术语：阶段动作下沉到阶段面评区，`next` 支持 `next_round` 补录，`reset` 清空全部阶段面试人并回到 `初筛`。 |
 | `0.1.16` | `2026-03-27` | `0.1.16` | 回填 PDF 解析链路增强术语：解析服务接口读取、配置文件外置、环境变量覆盖、数据库缓存复用与失败自动回退；回填结构化抽取融合增强术语：字段级“有值覆盖、无值保留”替换与候选人名称同步更新。 |
 | `0.1.15` | `2026-03-26` | `0.1.15` | 回填操作记录审计中心、工作台最近查看恢复、自动评分明细复核、分段评分表解析与协作治理补充术语；新增“用户明确确认已发布完成时必须同步完成状态迁移”的协作语义。 |
 | `0.1.14` | `2026-03-24` | `0.1.14` | 回填自动评分输入收敛术语：评分表规范化、结构化候选人优先入模、阈值保守策略与严格 JSON 输出；回填候选人高级筛选术语：流程状态、学校、学历、年限、评分区间与上传日期筛选口径。 |

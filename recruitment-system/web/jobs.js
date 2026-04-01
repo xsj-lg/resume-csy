@@ -20,6 +20,7 @@ let jobsSyncPending = false;
 const els = {
   currentUser: document.getElementById("jobs-current-user"),
   operationsLink: document.getElementById("jobs-operations-link"),
+  resumeResultsExportLink: document.getElementById("jobs-resume-results-export-link"),
   logoutBtn: document.getElementById("jobs-logout-btn"),
   filterKeyword: document.getElementById("job-filter-keyword"),
   filterStatus: document.getElementById("job-filter-status"),
@@ -138,7 +139,12 @@ function roleCodeFromUser(user) {
 
 function canAccessJobPage(user) {
   const roleCode = roleCodeFromUser(user);
-  return roleCode === "administrator" || roleCode === "hr_specialist" || roleCode === "hiring_manager";
+  return roleCode === "administrator" || roleCode === "hr_specialist" || roleCode === "personnel_manager";
+}
+
+function canExportResumeResults(user) {
+  const roleCode = roleCodeFromUser(user);
+  return roleCode === "administrator" || roleCode === "personnel_manager";
 }
 
 function normalizeDepartment(value) {
@@ -382,11 +388,14 @@ function roleLabelForOption(item) {
   if (role === "hr_specialist") {
     return "HR / 招聘专员";
   }
-  if (role === "hiring_manager") {
-    return "部门负责人 / 用人经理";
+  if (role === "personnel_manager") {
+    return "人事经理";
   }
-  if (role === "interviewer") {
-    return "面试官";
+  if (role === "engineering_manager") {
+    return "研发经理";
+  }
+  if (role === "algorithm_manager") {
+    return "算法经理";
   }
   return "用户";
 }
@@ -398,7 +407,12 @@ function renderUserSelectOptions() {
   });
   const managerCandidatesByRole = state.users.filter((item) => {
     const role = roleCodeFromUser(item);
-    return role === "administrator" || role === "hiring_manager";
+    return (
+      role === "administrator"
+      || role === "personnel_manager"
+      || role === "engineering_manager"
+      || role === "algorithm_manager"
+    );
   });
   // 无部门负责人账号时回退到全部激活用户，避免下拉不可选。
   const managerCandidates = managerCandidatesByRole.length > 0 ? managerCandidatesByRole : state.users;
@@ -433,12 +447,18 @@ function renderCurrentUser() {
     if (els.operationsLink) {
       els.operationsLink.classList.add("hidden");
     }
+    if (els.resumeResultsExportLink) {
+      els.resumeResultsExportLink.classList.add("hidden");
+    }
     return;
   }
   const role = roleLabelForOption(state.me);
   els.currentUser.textContent = `当前用户：${state.me.display_name} (@${state.me.username}) · ${role}`;
   if (els.operationsLink) {
     els.operationsLink.classList.toggle("hidden", roleCodeFromUser(state.me) !== "administrator");
+  }
+  if (els.resumeResultsExportLink) {
+    els.resumeResultsExportLink.classList.toggle("hidden", !canExportResumeResults(state.me));
   }
 }
 

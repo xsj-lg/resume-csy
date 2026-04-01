@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import csv
+import io
 from datetime import date, datetime
 from typing import Any
 from urllib.parse import parse_qs
 
 from ..repositories.candidate_repository import (
     list_candidate_file_rows,
+    load_rounds,
     parse_candidate_from_filename,
     profile_summaries,
     seed_candidate_profiles,
 )
 from ..repositories.sqlite_helpers import connect_db
+from ..utils.time_utils import utc_now_iso
 
 
 def _candidate_service():
@@ -504,14 +508,226 @@ def list_interview_calendar_for_user(user: dict[str, Any] | None) -> list[dict[s
     return [item for item in items if str(item.get("candidate_id", "")) in visible_ids]
 
 
+def parse_resume_result_filters(query: str) -> dict[str, str]:
+    params = parse_qs(query or "", keep_blank_values=True)
+    return {
+        "uploaded_from": _first_query_value(params, ("uploaded_from", "upload_date_from", "date_from")),
+        "uploaded_to": _first_query_value(params, ("uploaded_to", "upload_date_to", "date_to")),
+    }
+
+
+def _parse_datetime_bound(value: str, *, is_end: bool) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    parsed_date = _parse_date_bound(text)
+    if parsed_date is not None:
+        if is_end:
+            return datetime.combine(parsed_date, datetime.max.time()).replace(microsecond=999999)
+        return datetime.combine(parsed_date, datetime.min.time())
+    normalized = text.replace(" ", "T")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone().replace(tzinfo=None)
+    return parsed
+
+
+def _parse_uploaded_at(value: str) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    normalized = text.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone().replace(tzinfo=None)
+    return parsed
+
+
+def _build_resume_result_row(
+    *,
+    file_row: dict[str, Any],
+    summary: dict[str, Any],
+    rounds: dict[str, dict[str, Any]],
+    auto_score: dict[str, Any] | None,
+) -> dict[str, Any]:
+    candidate_service = _candidate_service()
+    current_stage = summary.get("current_stage") or candidate_service.DEFAULT_STAGE
+    stage_closed_from = summary.get("stage_closed_from") or ""
+    statuses, current_stage, stage_closed_from = candidate_service.decode_stage_statuses(
+        summary.get("stage_status_json") or "",
+        current_stage,
+        stage_closed_from,
+    )
+    current_status = candidate_service.derive_interview_status(current_stage, stage_closed_from, statuses)
+    active_stage = (
+        candidate_service.normalize_stage_name(current_stage)
+        if current_status.startswith("待")
+        else ""
+    )
+    return {
+        "candidate_id": str(file_row.get("candidate_id", "")).strip(),
+        "uploaded_at": str(file_row.get("uploaded_at", "")).strip(),
+        "candidate_name": str(file_row.get("candidate_name", "")).strip(),
+        "current_status": current_status,
+        "active_stage": active_stage,
+        "screening_interviewer": str(rounds.get("初筛", {}).get("interviewer_name", "")).strip(),
+        "first_interviewer": str(rounds.get("一面", {}).get("interviewer_name", "")).strip(),
+        "second_interviewer": str(rounds.get("二面", {}).get("interviewer_name", "")).strip(),
+        "hr_interviewer": str(rounds.get("HR面", {}).get("interviewer_name", "")).strip(),
+        "ai_score": auto_score.get("total_score") if isinstance(auto_score, dict) else None,
+        "ai_score_summary": str((auto_score or {}).get("summary", "")).strip(),
+    }
+
+
+def list_resume_result_rows_for_user(
+    user: dict[str, Any] | None,
+    filters: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    workflow_service = _candidate_workflow_service()
+    candidate_service = _candidate_service()
+    normalized = filters or {}
+    uploaded_from = _parse_datetime_bound(normalized.get("uploaded_from", ""), is_end=False)
+    uploaded_to = _parse_datetime_bound(normalized.get("uploaded_to", ""), is_end=True)
+    visible_ids = workflow_service.visible_candidate_ids_for_user(user)
+
+    with connect_db(candidate_service.DB_PATH) as conn:
+        seed_candidate_profiles(conn)
+        file_rows = list_candidate_file_rows(conn)
+        summaries = profile_summaries(conn)
+        score_rows = conn.execute(
+            """
+            SELECT candidate_id, total_score, summary
+            FROM candidate_auto_scores
+            ORDER BY candidate_id, created_at DESC
+            """
+        ).fetchall()
+
+        auto_score_map: dict[str, dict[str, Any]] = {}
+        for row in score_rows:
+            candidate_id = str(row[0] or "").strip()
+            if not candidate_id or candidate_id in auto_score_map:
+                continue
+            auto_score_map[candidate_id] = {
+                "total_score": row[1],
+                "summary": str(row[2] or "").strip(),
+            }
+
+        items: list[dict[str, Any]] = []
+        for file_row in file_rows:
+            candidate_id = str(file_row.get("candidate_id", "")).strip()
+            if not candidate_id:
+                continue
+            if visible_ids is not None and candidate_id not in visible_ids:
+                continue
+
+            uploaded_at = _parse_uploaded_at(file_row.get("uploaded_at", ""))
+            if uploaded_from and (uploaded_at is None or uploaded_at < uploaded_from):
+                continue
+            if uploaded_to and (uploaded_at is None or uploaded_at > uploaded_to):
+                continue
+
+            rounds = load_rounds(conn, candidate_id)
+            items.append(
+                _build_resume_result_row(
+                    file_row=file_row,
+                    summary=summaries.get(candidate_id, {}),
+                    rounds=rounds,
+                    auto_score=auto_score_map.get(candidate_id),
+                )
+            )
+
+        conn.commit()
+    return sorted(items, key=lambda item: item.get("uploaded_at", ""), reverse=True)
+
+
+def get_resume_result_summary_for_user(
+    user: dict[str, Any] | None,
+    filters: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    candidate_service = _candidate_service()
+    items = list_resume_result_rows_for_user(user, filters)
+    stage_counts = {stage: 0 for stage in candidate_service.INTERVIEW_STAGES}
+    passed_count = 0
+    failed_count = 0
+    for item in items:
+        status = str(item.get("current_status", "")).strip()
+        if status == candidate_service.STATUS_PASSED:
+            passed_count += 1
+        elif status.startswith("未通过"):
+            failed_count += 1
+        active_stage = str(item.get("active_stage", "")).strip()
+        if active_stage in stage_counts:
+            stage_counts[active_stage] += 1
+    return {
+        "total_count": len(items),
+        "finished_count": passed_count + failed_count,
+        "passed_count": passed_count,
+        "failed_count": failed_count,
+        "stage_counts": stage_counts,
+        "filters": filters or {},
+    }
+
+
+def export_resume_results_for_user(
+    user: dict[str, Any] | None,
+    filters: dict[str, str] | None = None,
+) -> tuple[str, str, bytes]:
+    items = list_resume_result_rows_for_user(user, filters)
+    timestamp = utc_now_iso().replace(":", "-")
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        [
+            "简历上传时间",
+            "简历人员",
+            "初筛面试人",
+            "一面面试人",
+            "二面面试人",
+            "HR面面试人",
+            "当前简历状态",
+            "AI自动评分",
+            "AI自动评分详细描述",
+        ]
+    )
+    for item in items:
+        writer.writerow(
+            [
+                item.get("uploaded_at", ""),
+                item.get("candidate_name", ""),
+                item.get("screening_interviewer", ""),
+                item.get("first_interviewer", ""),
+                item.get("second_interviewer", ""),
+                item.get("hr_interviewer", ""),
+                item.get("current_status", ""),
+                item.get("ai_score", ""),
+                item.get("ai_score_summary", ""),
+            ]
+        )
+    return (
+        f"resume-results-{timestamp}.csv",
+        "text/csv; charset=utf-8",
+        buffer.getvalue().encode("utf-8-sig"),
+    )
+
+
 __all__ = [
     "candidate_map",
     "filter_candidates",
+    "export_resume_results_for_user",
+    "get_resume_result_summary_for_user",
     "list_candidates",
     "list_candidates_for_user",
     "list_future_interview_schedule",
     "list_interview_calendar",
     "list_interview_calendar_for_user",
+    "list_resume_result_rows_for_user",
     "normalize_filter_text",
     "parse_candidate_filters",
+    "parse_resume_result_filters",
 ]

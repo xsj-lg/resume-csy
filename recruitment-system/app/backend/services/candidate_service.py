@@ -45,12 +45,15 @@ from .db_service import (
 )
 from .candidate_query_service import (
     candidate_map,
+    export_resume_results_for_user,
     filter_candidates,
+    get_resume_result_summary_for_user,
     list_candidates,
     list_candidates_for_user,
     list_interview_calendar,
     list_interview_calendar_for_user,
     parse_candidate_filters,
+    parse_resume_result_filters,
 )
 from .candidate_command_service import (
     create_candidate_from_upload,
@@ -129,9 +132,10 @@ from .job_service import (
 from .role_user_service import (
     DEFAULT_NON_ADMIN_ROLE,
     ROLE_ADMINISTRATOR,
-    ROLE_HIRING_MANAGER,
     ROLE_HR_SPECIALIST,
-    ROLE_INTERVIEWER,
+    ROLE_PERSONNEL_MANAGER,
+    ROLE_ENGINEERING_MANAGER,
+    ROLE_ALGORITHM_MANAGER,
     change_password,
     clear_expired_sessions,
     create_session,
@@ -222,8 +226,8 @@ ROLE_UPLOAD_ALLOWED = {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST}
 ROLE_DELETE_CANDIDATE_ALLOWED = {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST}
 ROLE_PROFILE_WRITE_ALLOWED = {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST}
 HR_ALLOWED_ROUND_STAGES = {"初筛"}
-MANAGER_ALLOWED_ROUND_STAGES = {"二面", "HR面"}
-MANAGER_DECISION_STAGES = {"二面", "HR面"}
+PERSONNEL_ALLOWED_ROUND_STAGES = {"HR面"}
+MANAGER_INTERVIEW_STAGES = {"一面", "二面"}
 
 
 def infer_department_scope(applied_position: str, preset_position: str) -> str:

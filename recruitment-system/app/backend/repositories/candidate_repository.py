@@ -220,6 +220,7 @@ def default_round(stage: str) -> dict[str, Any]:
         "interview_time": "",
         "interviewer_user_id": "",
         "interviewer_name": "",
+        "interviewer_role_name": "",
         "planned_questions": "",
         "interview_review": "",
         "updated_at": "",
@@ -469,10 +470,17 @@ def load_rounds(conn: sqlite3.Connection, candidate_id: str) -> dict[str, dict[s
     ).fetchall()
 
     user_name_rows = conn.execute(
-        "SELECT id, display_name, username FROM users"
+        "SELECT id, display_name, username, role_code, is_admin FROM users"
     ).fetchall()
     user_display_map = {
         row[0]: (row[1] or row[2] or "") for row in user_name_rows
+    }
+    user_role_map = {
+        row[0]: candidate_service.role_name(
+            candidate_service.normalize_role_code(str(row[3] or ""))
+            or candidate_service.role_code_from_is_admin(int(row[4] or 0))
+        )
+        for row in user_name_rows
     }
 
     rounds = {stage: default_round(stage) for stage in candidate_service.INTERVIEW_STAGES}
@@ -486,6 +494,7 @@ def load_rounds(conn: sqlite3.Connection, candidate_id: str) -> dict[str, dict[s
             "interview_time": row[1],
             "interviewer_user_id": interviewer_user_id,
             "interviewer_name": user_display_map.get(interviewer_user_id, ""),
+            "interviewer_role_name": user_role_map.get(interviewer_user_id, ""),
             "planned_questions": row[3],
             "interview_review": row[4],
             "updated_at": row[5],

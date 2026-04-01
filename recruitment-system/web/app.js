@@ -21,8 +21,16 @@ const DEFAULT_SORT_MODE = "star_time";
 const SORT_MODES = new Set(["star_time", "time", "name"]);
 const POSITION_MATCH_MODES = new Set(["fuzzy", "exact"]);
 const FILTER_DEBOUNCE_MS = 260;
-const ROLE_ORDER = ["administrator", "hr_specialist", "interviewer", "hiring_manager"];
+const ROLE_ORDER = [
+  "administrator",
+  "hr_specialist",
+  "personnel_manager",
+  "engineering_manager",
+  "algorithm_manager",
+];
 const DEPARTMENT_SCOPES = ["销售部", "研发部", "算法部", "项目部", "人事部"];
+const MANAGER_ROLE_CODES = new Set(["engineering_manager", "algorithm_manager"]);
+const FULL_ACCESS_ROLE_CODES = new Set(["administrator", "hr_specialist", "personnel_manager"]);
 const STAGE_STATUS_OPTIONS = [
   "",
   "待初筛",
@@ -41,8 +49,9 @@ const WORKSPACE_SELECTION_STORAGE_KEY = "rs_workspace_last_candidate_v1";
 const ROLE_LABELS = {
   administrator: "管理员",
   hr_specialist: "HR / 招聘专员",
-  interviewer: "面试官",
-  hiring_manager: "部门负责人 / 用人经理",
+  personnel_manager: "人事经理",
+  engineering_manager: "研发经理",
+  algorithm_manager: "算法经理",
 };
 
 const state = {
@@ -86,6 +95,7 @@ const els = {
 
   currentUserText: document.getElementById("current-user-text"),
   jobsManageLink: document.getElementById("jobs-manage-link"),
+  resumeResultsExportLink: document.getElementById("resume-results-export-link"),
   operationsManageLink: document.getElementById("operations-manage-link"),
   usersManageLink: document.getElementById("users-manage-link"),
   logoutBtn: document.getElementById("logout-btn"),
@@ -118,6 +128,7 @@ const els = {
 
   stageAxis: document.getElementById("stage-axis"),
   currentStageText: document.getElementById("current-stage-text"),
+  stageCurrentInterviewerRole: document.getElementById("stage-current-interviewer-role"),
   stageEndedFrom: document.getElementById("stage-ended-from"),
   stageNextBtn: document.getElementById("stage-next-btn"),
   stageEndBtn: document.getElementById("stage-end-btn"),
@@ -143,6 +154,12 @@ const els = {
   aiScoreDimensionList: document.getElementById("ai-score-dimension-list"),
   roundSectionTitle: document.getElementById("round-section-title"),
   saveRoundBtn: document.getElementById("save-round-btn"),
+  nextStagePanel: document.getElementById("next-stage-panel"),
+  nextStageTitle: document.getElementById("next-stage-title"),
+  nextStageInterviewTime: document.getElementById("next-stage-interview-time"),
+  nextStageInterviewer: document.getElementById("next-stage-interviewer"),
+  confirmNextStageBtn: document.getElementById("confirm-next-stage-btn"),
+  cancelNextStageBtn: document.getElementById("cancel-next-stage-btn"),
   saveProfileBtn: document.getElementById("save-profile-btn"),
   deleteCandidateBtn: document.getElementById("delete-candidate-btn"),
 
@@ -721,6 +738,12 @@ function renderCurrentUser() {
 
 function normalizeRoleCode(value) {
   const text = String(value || "").trim().toLowerCase();
+  if (text === "interviewer") {
+    return "engineering_manager";
+  }
+  if (text === "hiring_manager") {
+    return "personnel_manager";
+  }
   return ROLE_ORDER.includes(text) ? text : "";
 }
 
@@ -1085,12 +1108,17 @@ function renderStageAxis() {
   els.stageAxis.innerHTML = "";
   const profile = state.evaluation?.profile || {};
   const rounds = state.evaluation?.rounds || {};
+  const currentUser = state.currentUser || {};
+  const currentUserId = String(currentUser.id || "").trim();
+  const currentUserRole = roleCodeFromUser(currentUser);
   const statuses = normalizeStageStatuses(profile);
   const closed = Boolean(profile.stage_closed_from);
   const allPassed = INTERVIEW_STAGES.every((stage) => statuses[stage] === STATUS_PASSED);
   const current = currentWorkflowStage(profile, statuses);
   const closedStage = INTERVIEW_STAGES.includes(profile.stage_closed_from) ? profile.stage_closed_from : "";
   const actionStage = closedStage || current || INTERVIEW_STAGES[0];
+  const actionRound = rounds[actionStage] || {};
+  const actionRoundInterviewerId = String(actionRound.interviewer_user_id || "").trim();
   const nextLabel =
     actionStage === INTERVIEW_STAGES[INTERVIEW_STAGES.length - 1] ? "通过面试" : "进入下一阶段";
   const endLabel = failedStatusByStage(actionStage);
@@ -1133,12 +1161,19 @@ function renderStageAxis() {
     closed ||
     current !== INTERVIEW_STAGES[0] ||
     INTERVIEW_STAGES.some((stage) => statuses[stage] !== STATUS_PENDING);
+  const isManagerRole = MANAGER_ROLE_CODES.has(currentUserRole);
+  const managerCanOperateCurrentStage =
+    !isManagerRole || (currentUserId && actionRoundInterviewerId && actionRoundInterviewerId === currentUserId);
+  const canResetStage =
+    currentUserRole === "administrator"
+    || currentUserRole === "hr_specialist"
+    || currentUserRole === "personnel_manager";
 
   els.stageNextBtn.textContent = nextLabel;
   els.stageEndBtn.textContent = endLabel;
-  els.stageNextBtn.disabled = closed || allPassed;
-  els.stageEndBtn.disabled = closed || allPassed;
-  els.stageResetBtn.disabled = !hasProgress;
+  els.stageNextBtn.disabled = closed || allPassed || !managerCanOperateCurrentStage;
+  els.stageEndBtn.disabled = closed || allPassed || !managerCanOperateCurrentStage;
+  els.stageResetBtn.disabled = !hasProgress || !canResetStage;
 }
 
 function applyProfileFields(profile) {
@@ -1170,48 +1205,110 @@ function currentRound() {
   return state.evaluation.rounds[state.viewStage] || null;
 }
 
-function renderInterviewerOptions(selectedId = "") {
-  els.stageInterviewer.innerHTML = "";
+function nextStageOf(stage) {
+  const index = INTERVIEW_STAGES.indexOf(stage);
+  if (index < 0 || index >= INTERVIEW_STAGES.length - 1) {
+    return "";
+  }
+  return INTERVIEW_STAGES[index + 1];
+}
 
+function allowedInterviewerOptions(stage) {
+  const items = Array.isArray(state.interviewerOptions) ? state.interviewerOptions : [];
+  if (stage === "一面" || stage === "二面") {
+    return items.filter((item) => MANAGER_ROLE_CODES.has(String(item.role_code || "").trim()));
+  }
+  if (stage === "HR面") {
+    return items.filter((item) => String(item.role_code || "").trim() === "personnel_manager");
+  }
+  return items;
+}
+
+function renderInterviewerSelect(selectEl, stage, selectedId = "") {
+  if (!selectEl) {
+    return;
+  }
+  selectEl.innerHTML = "";
   const empty = document.createElement("option");
   empty.value = "";
   empty.textContent = "未指定";
-  els.stageInterviewer.appendChild(empty);
+  selectEl.appendChild(empty);
 
-  state.interviewerOptions.forEach((item) => {
+  const availableOptions = allowedInterviewerOptions(stage);
+  availableOptions.forEach((item) => {
     const option = document.createElement("option");
     option.value = item.id;
     option.textContent = item.label || item.display_name || item.username;
-    els.stageInterviewer.appendChild(option);
+    selectEl.appendChild(option);
   });
 
-  if (selectedId && !state.interviewerOptions.some((item) => item.id === selectedId)) {
+  if (selectedId && !availableOptions.some((item) => item.id === selectedId)) {
     const fallback = document.createElement("option");
     fallback.value = selectedId;
     fallback.textContent = `${selectedId} (已不可用)`;
-    els.stageInterviewer.appendChild(fallback);
+    selectEl.appendChild(fallback);
   }
 
-  els.stageInterviewer.value = selectedId || "";
+  selectEl.value = selectedId || "";
+}
+
+function renderInterviewerOptions(selectedId = "") {
+  renderInterviewerSelect(els.stageInterviewer, state.viewStage, selectedId);
+}
+
+function updateStageInterviewerRole(selectedId = "", fallbackRoleName = "") {
+  if (!els.stageCurrentInterviewerRole) {
+    return;
+  }
+  const selected = state.interviewerOptions.find((item) => item.id === selectedId);
+  const roleName = String(selected?.role_name || fallbackRoleName || "").trim();
+  els.stageCurrentInterviewerRole.textContent = `当前面试人角色：${roleName || "未指定"}`;
+}
+
+function closeNextStagePanel() {
+  if (!els.nextStagePanel) {
+    return;
+  }
+  els.nextStagePanel.classList.add("hidden");
+}
+
+function openNextStagePanel(stage) {
+  if (!els.nextStagePanel || !els.nextStageInterviewTime || !els.nextStageInterviewer) {
+    return;
+  }
+  const nextStage = nextStageOf(stage);
+  if (!nextStage) {
+    closeNextStagePanel();
+    return;
+  }
+  const nextRound = state.evaluation?.rounds?.[nextStage] || {};
+  if (els.nextStageTitle) {
+    els.nextStageTitle.textContent = `${nextStage}阶段安排`;
+  }
+  els.nextStageInterviewTime.value = normalizeDatetimeLocal(nextRound.interview_time || "");
+  renderInterviewerSelect(els.nextStageInterviewer, nextStage, nextRound.interviewer_user_id || "");
+  els.nextStagePanel.classList.remove("hidden");
 }
 
 function applyRoundFields() {
   const round = currentRound() || {
     interview_time: "",
     interviewer_user_id: "",
+    interviewer_role_name: "",
     planned_questions: "",
     interview_review: "",
     updated_at: "",
   };
 
-  const stageNo = INTERVIEW_STAGES.indexOf(state.viewStage) + 1;
-  els.roundSectionTitle.textContent = `第${stageNo}阶段的面评信息`;
+  els.roundSectionTitle.textContent = `${state.viewStage}阶段的面评信息`;
   els.interviewTime.value = normalizeDatetimeLocal(round.interview_time || "");
   renderInterviewerOptions(round.interviewer_user_id || "");
+  updateStageInterviewerRole(round.interviewer_user_id || "", round.interviewer_role_name || "");
   els.plannedQuestions.value = round.planned_questions || "";
   els.interviewReview.value = round.interview_review || "";
   autoResizeTextarea(els.plannedQuestions);
   autoResizeTextarea(els.interviewReview);
+  closeNextStagePanel();
 }
 
 function parseJobSnapshot(item) {
@@ -1707,6 +1804,20 @@ function buildRoundPayload() {
   };
 }
 
+function buildNextRoundPayload(stage) {
+  const nextStage = nextStageOf(stage);
+  if (!nextStage || !els.nextStageInterviewTime || !els.nextStageInterviewer) {
+    return null;
+  }
+  return {
+    stage: nextStage,
+    interview_time: els.nextStageInterviewTime.value.trim(),
+    interviewer_user_id: els.nextStageInterviewer.value,
+    planned_questions: "",
+    interview_review: "",
+  };
+}
+
 async function selectCandidate(candidateId) {
   if (!candidateId) {
     return;
@@ -1776,7 +1887,7 @@ async function reloadCalendar() {
   renderCalendar();
 }
 
-async function runStageAction(action) {
+async function submitStageAction(action, nextRound = null) {
   if (!state.activeId) {
     return;
   }
@@ -1792,9 +1903,13 @@ async function runStageAction(action) {
   };
 
   try {
+    const payload = { action };
+    if (nextRound) {
+      payload.next_round = nextRound;
+    }
     const data = await fetchJSON(`/api/evaluations/${encodeURIComponent(state.activeId)}/stage`, {
       method: "POST",
-      body: JSON.stringify({ action }),
+      body: JSON.stringify(payload),
     });
     applyEvaluation(data.item);
     syncCandidateListFromProfile();
@@ -1812,7 +1927,21 @@ async function runStageAction(action) {
   }
 }
 
-async function saveRound() {
+async function runStageAction(action) {
+  if (action !== "next") {
+    return submitStageAction(action);
+  }
+  const profile = state.evaluation?.profile || {};
+  const statuses = normalizeStageStatuses(profile);
+  const activeStage = currentWorkflowStage(profile, statuses) || INTERVIEW_STAGES[0];
+  const nextStage = nextStageOf(activeStage);
+  if (!nextStage) {
+    return submitStageAction("next");
+  }
+  openNextStagePanel(activeStage);
+}
+
+async function saveRound(showMessage = true) {
   if (!state.activeId) {
     return;
   }
@@ -1826,14 +1955,34 @@ async function saveRound() {
     syncCandidateListFromProfile();
     renderList();
     await reloadCalendar();
-    setMessage("面评信息已保存", "success");
+    if (showMessage) {
+      setMessage("面评信息已保存", "success");
+    }
   } catch (err) {
     if (err.status === 403 && err.code === "must_change_password") {
       redirectToLogin(true);
       return;
     }
     setMessage(err.message || "面评信息保存失败", "error");
+    throw err;
   }
+}
+
+async function confirmNextStageAction() {
+  const profile = state.evaluation?.profile || {};
+  const statuses = normalizeStageStatuses(profile);
+  const activeStage = currentWorkflowStage(profile, statuses) || INTERVIEW_STAGES[0];
+  const nextRound = buildNextRoundPayload(activeStage);
+  if (!nextRound) {
+    return;
+  }
+  if (!nextRound.interview_time || !nextRound.interviewer_user_id) {
+    setMessage("请先填写下一阶段面试时间和阶段面试人", "error");
+    return;
+  }
+  await saveRound(false);
+  await submitStageAction("next", nextRound);
+  closeNextStagePanel();
 }
 
 async function saveProfile() {
@@ -2124,7 +2273,7 @@ async function loadCandidates(preferredCandidateId = null) {
   renderList();
 
   if (state.activeId) {
-    await selectCandidate(state.activeId);
+    void selectCandidate(state.activeId);
   } else {
     clearActiveCandidateSelection();
     clearWorkspaceForEmptyList();
@@ -2192,7 +2341,7 @@ function syncDepartmentFilterVisibility() {
     return;
   }
   const roleCode = roleCodeFromUser(state.currentUser);
-  const shouldHide = roleCode === "hiring_manager";
+  const shouldHide = MANAGER_ROLE_CODES.has(roleCode);
   els.filterDepartmentWrap.classList.toggle("hidden", shouldHide);
   if (shouldHide && state.candidateFilters.department) {
     state.candidateFilters.department = "";
@@ -2206,6 +2355,9 @@ function renderCurrentUser() {
     els.currentUserText.textContent = "未登录";
     if (els.jobsManageLink) {
       els.jobsManageLink.classList.add("hidden");
+    }
+    if (els.resumeResultsExportLink) {
+      els.resumeResultsExportLink.classList.add("hidden");
     }
     if (els.operationsManageLink) {
       els.operationsManageLink.classList.add("hidden");
@@ -2224,11 +2376,15 @@ function renderCurrentUser() {
   const roleCode = roleCodeFromUser(user);
   const roleText = roleLabelFromCode(roleCode);
   els.currentUserText.textContent = `${user.display_name} (@${user.username}) · ${roleText}`;
-  const canManageJobs = roleCode === "administrator" || roleCode === "hr_specialist" || roleCode === "hiring_manager";
+  const canManageJobs = FULL_ACCESS_ROLE_CODES.has(roleCode);
+  const canExportResumeResults = roleCode === "administrator" || roleCode === "personnel_manager";
   const canViewOperationLogs = roleCode === "administrator";
   const canTriggerAutoScore = roleCode === "administrator" || roleCode === "hr_specialist";
   if (els.jobsManageLink) {
     els.jobsManageLink.classList.toggle("hidden", !canManageJobs);
+  }
+  if (els.resumeResultsExportLink) {
+    els.resumeResultsExportLink.classList.toggle("hidden", !canExportResumeResults);
   }
   if (els.operationsManageLink) {
     els.operationsManageLink.classList.toggle("hidden", !canViewOperationLogs);
@@ -2431,10 +2587,21 @@ els.experienceType.addEventListener("change", (e) => {
 
 els.plannedQuestions.addEventListener("input", () => autoResizeTextarea(els.plannedQuestions));
 els.interviewReview.addEventListener("input", () => autoResizeTextarea(els.interviewReview));
+if (els.stageInterviewer) {
+  els.stageInterviewer.addEventListener("change", (event) => {
+    updateStageInterviewerRole(event.target.value);
+  });
+}
 
 els.stageNextBtn.addEventListener("click", () => runStageAction("next"));
 els.stageEndBtn.addEventListener("click", () => runStageAction("end"));
 els.stageResetBtn.addEventListener("click", () => runStageAction("reset"));
+if (els.confirmNextStageBtn) {
+  els.confirmNextStageBtn.addEventListener("click", confirmNextStageAction);
+}
+if (els.cancelNextStageBtn) {
+  els.cancelNextStageBtn.addEventListener("click", closeNextStagePanel);
+}
 if (els.triggerAutoScoreBtn) {
   els.triggerAutoScoreBtn.addEventListener("click", triggerAutoScore);
 }

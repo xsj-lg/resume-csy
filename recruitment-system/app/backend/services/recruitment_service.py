@@ -16,7 +16,14 @@ from .candidate_service import (  # noqa: F401
     MAX_UPLOAD_BYTES,
     ROOT_DIR,
     STATIC_DIR,
+    export_resume_results_for_user,
+    filter_candidates,
+    get_resume_result_summary_for_user,
+    list_candidates_for_user,
+    list_interview_calendar_for_user,
     now_ts,
+    parse_candidate_filters,
+    parse_resume_result_filters,
     utc_now_iso,
 )
 from .candidate_workflow_service import *  # noqa: F401,F403

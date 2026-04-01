@@ -24,8 +24,9 @@ DEFAULT_ADMIN_PASSWORD = os.environ.get("RESUME_APP_ADMIN_PASSWORD", "admin12345
 
 ROLE_ADMINISTRATOR = "administrator"
 ROLE_HR_SPECIALIST = "hr_specialist"
-ROLE_INTERVIEWER = "interviewer"
-ROLE_HIRING_MANAGER = "hiring_manager"
+ROLE_PERSONNEL_MANAGER = "personnel_manager"
+ROLE_ENGINEERING_MANAGER = "engineering_manager"
+ROLE_ALGORITHM_MANAGER = "algorithm_manager"
 DEFAULT_NON_ADMIN_ROLE = ROLE_HR_SPECIALIST
 
 DEPARTMENT_SCOPES = {"销售部", "研发部", "算法部", "项目部", "人事部"}
@@ -36,8 +37,15 @@ ROLE_CODE_ALIASES = {
     "administrator": ROLE_ADMINISTRATOR,
     "hr": ROLE_HR_SPECIALIST,
     "hr_specialist": ROLE_HR_SPECIALIST,
-    "interviewer": ROLE_INTERVIEWER,
-    "hiring_manager": ROLE_HIRING_MANAGER,
+    "personnel_manager": ROLE_PERSONNEL_MANAGER,
+    "hr_manager": ROLE_PERSONNEL_MANAGER,
+    "engineering_manager": ROLE_ENGINEERING_MANAGER,
+    "rd_manager": ROLE_ENGINEERING_MANAGER,
+    "dev_manager": ROLE_ENGINEERING_MANAGER,
+    "algorithm_manager": ROLE_ALGORITHM_MANAGER,
+    "algo_manager": ROLE_ALGORITHM_MANAGER,
+    "interviewer": ROLE_ENGINEERING_MANAGER,
+    "hiring_manager": ROLE_PERSONNEL_MANAGER,
 }
 ROLE_DEFINITIONS: dict[str, dict[str, Any]] = {
     ROLE_ADMINISTRATOR: {
@@ -58,20 +66,32 @@ ROLE_DEFINITIONS: dict[str, dict[str, Any]] = {
             "一般不可修改系统权限配置",
         ],
     },
-    ROLE_INTERVIEWER: {
-        "role_code": ROLE_INTERVIEWER,
-        "role_name": "面试官",
-        "responsibilities": ["查看分配给自己的候选人", "填写面试评价", "给出每轮评分和结论"],
-        "permission_features": ["只能看被分配给自己的候选人", "只能填写自己负责轮次的面试评价", "不能随意改动历史流程"],
+    ROLE_PERSONNEL_MANAGER: {
+        "role_code": ROLE_PERSONNEL_MANAGER,
+        "role_name": "人事经理",
+        "responsibilities": ["查看全部候选人", "负责 HR 面评价", "参与流程决策"],
+        "permission_features": ["可查看全部候选人", "可填写 HR 面评价", "不可管理系统用户", "不可上传简历"],
     },
-    ROLE_HIRING_MANAGER: {
-        "role_code": ROLE_HIRING_MANAGER,
-        "role_name": "部门负责人 / 用人经理",
-        "responsibilities": ["查看岗位候选人情况", "参与关键轮次决策", "查看候选人综合评价"],
-        "permission_features": ["可查看自己部门岗位", "可查看候选人完整流程和评分", "可填写复试/终面结论", "不负责系统管理"],
+    ROLE_ENGINEERING_MANAGER: {
+        "role_code": ROLE_ENGINEERING_MANAGER,
+        "role_name": "研发经理",
+        "responsibilities": ["查看被分配到一面或二面的候选人", "填写自己负责轮次的面评"],
+        "permission_features": ["只能看一面/二面任一阶段指派给自己的候选人", "只能填写自己负责的一面/二面面评", "不可管理用户与岗位"],
+    },
+    ROLE_ALGORITHM_MANAGER: {
+        "role_code": ROLE_ALGORITHM_MANAGER,
+        "role_name": "算法经理",
+        "responsibilities": ["查看被分配到一面或二面的候选人", "填写自己负责轮次的面评"],
+        "permission_features": ["只能看一面/二面任一阶段指派给自己的候选人", "只能填写自己负责的一面/二面面评", "不可管理用户与岗位"],
     },
 }
-ROLE_ORDER = [ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST, ROLE_INTERVIEWER, ROLE_HIRING_MANAGER]
+ROLE_ORDER = [
+    ROLE_ADMINISTRATOR,
+    ROLE_HR_SPECIALIST,
+    ROLE_PERSONNEL_MANAGER,
+    ROLE_ENGINEERING_MANAGER,
+    ROLE_ALGORITHM_MANAGER,
+]
 
 
 def normalize_role_code(value: str) -> str:
@@ -101,6 +121,11 @@ def user_role_code(user: dict[str, Any] | None) -> str:
 
 def user_is_admin(user: dict[str, Any] | None) -> bool:
     return user_role_code(user) == ROLE_ADMINISTRATOR
+
+
+def can_export_resume_results(user: dict[str, Any] | None) -> bool:
+    role_code = user_role_code(user)
+    return role_code in {ROLE_ADMINISTRATOR, ROLE_PERSONNEL_MANAGER}
 
 
 def list_role_definitions() -> list[dict[str, Any]]:
@@ -248,7 +273,7 @@ def list_active_user_options() -> list[dict[str, Any]]:
     with connect_db(DB_PATH) as conn:
         rows = conn.execute(
             """
-            SELECT id, username, display_name
+            SELECT id, username, display_name, is_admin, role_code, department_scope
             FROM users
             WHERE is_active = 1
             ORDER BY username ASC
@@ -260,6 +285,9 @@ def list_active_user_options() -> list[dict[str, Any]]:
             "username": row[1],
             "display_name": row[2],
             "label": f"{row[2]} ({row[1]})",
+            "role_code": normalize_role_code(str(row[4])) or role_code_from_is_admin(int(row[3])),
+            "role_name": role_name(normalize_role_code(str(row[4])) or role_code_from_is_admin(int(row[3]))),
+            "department_scope": normalize_department_scope(str(row[5])),
         }
         for row in rows
     ]
@@ -384,10 +412,6 @@ def validate_user_payload(payload: dict[str, Any]) -> tuple[dict[str, Any] | Non
         return None, "password 至少 8 位"
     if role_code not in ROLE_DEFINITIONS:
         return None, "role_code 不合法"
-    if role_code == ROLE_HIRING_MANAGER and not department_scope:
-        return None, "部门负责人必须设置 department_scope（销售部/研发部/算法部/项目部/人事部）"
-    if role_code != ROLE_HIRING_MANAGER:
-        department_scope = ""
     return {
         "username": username,
         "display_name": display_name,
@@ -417,10 +441,6 @@ def validate_user_update_payload(payload: dict[str, Any]) -> tuple[dict[str, Any
         return None, "display_name 不能为空"
     if role_code not in ROLE_DEFINITIONS:
         return None, "role_code 不合法"
-    if role_code == ROLE_HIRING_MANAGER and not department_scope:
-        return None, "部门负责人必须设置 department_scope（销售部/研发部/算法部/项目部/人事部）"
-    if role_code != ROLE_HIRING_MANAGER:
-        department_scope = ""
     return {
         "display_name": display_name,
         "is_active": parsed_is_active,
@@ -606,15 +626,39 @@ def change_password(user_id: str, old_password: str, new_password: str) -> dict[
     )
 
 
+def migrate_legacy_role_code(raw_role_code: str, raw_department_scope: str, is_admin: int) -> str:
+    normalized = normalize_role_code(str(raw_role_code))
+    department_scope = normalize_department_scope(str(raw_department_scope))
+    if normalized:
+        if normalized == ROLE_PERSONNEL_MANAGER and department_scope == "研发部":
+            return ROLE_ENGINEERING_MANAGER
+        if normalized == ROLE_PERSONNEL_MANAGER and department_scope == "算法部":
+            return ROLE_ALGORITHM_MANAGER
+        return normalized
+    if int(is_admin) == 1:
+        return ROLE_ADMINISTRATOR
+    legacy_role = str(raw_role_code or "").strip().lower()
+    if legacy_role == "hiring_manager":
+        if department_scope == "研发部":
+            return ROLE_ENGINEERING_MANAGER
+        if department_scope == "算法部":
+            return ROLE_ALGORITHM_MANAGER
+        if department_scope == "人事部":
+            return ROLE_PERSONNEL_MANAGER
+        return ROLE_PERSONNEL_MANAGER
+    if legacy_role == "interviewer":
+        if department_scope == "算法部":
+            return ROLE_ALGORITHM_MANAGER
+        return ROLE_ENGINEERING_MANAGER
+    return role_code_from_is_admin(int(is_admin))
+
+
 def migrate_user_roles(conn: sqlite3.Connection) -> None:
     rows = conn.execute("SELECT id, is_admin, role_code, department_scope FROM users").fetchall()
     for user_id, is_admin, raw_role_code, raw_department_scope in rows:
-        normalized_role_code = normalize_role_code(str(raw_role_code))
-        next_role_code = normalized_role_code or role_code_from_is_admin(int(is_admin))
+        next_role_code = migrate_legacy_role_code(str(raw_role_code), str(raw_department_scope), int(is_admin))
         next_is_admin = 1 if next_role_code == ROLE_ADMINISTRATOR else 0
         next_department_scope = normalize_department_scope(str(raw_department_scope))
-        if next_role_code != ROLE_HIRING_MANAGER:
-            next_department_scope = ""
 
         if (
             next_role_code != str(raw_role_code or "")
@@ -645,4 +689,3 @@ def validate_change_password_payload(payload: dict[str, Any]) -> tuple[dict[str,
     if not old_password or not new_password:
         return None, "old_password 和 new_password 不能为空"
     return {"old_password": old_password, "new_password": new_password}, ""
-

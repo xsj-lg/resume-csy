@@ -27,6 +27,10 @@ def handle_public_get(handler: Any, path: str) -> bool:
         handler._send_file(STATIC_DIR / "jobs.html", "text/html; charset=utf-8")
         return True
 
+    if path == "/resume-results-export":
+        handler._send_file(STATIC_DIR / "resume-results-export.html", "text/html; charset=utf-8")
+        return True
+
     if path.startswith("/static/"):
         local_path = path.removeprefix("/static/")
         file_path = (STATIC_DIR / local_path).resolve()
@@ -45,4 +49,3 @@ def handle_public_get(handler: Any, path: str) -> bool:
         return True
 
     return False
-

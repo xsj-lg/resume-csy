@@ -54,6 +54,8 @@ bash scripts/resume_app_up.sh
 2. 新建岗位、编辑岗位、关闭岗位、复制岗位。
 3. 招聘负责人/用人经理用户下拉是否正确。
 4. 岗位评分表上传、预览、版本切换、删除是否正常。
+5. 管理员与人事经理是否可在岗位管理页右侧看到“简历结果导出”入口并正常进入导出页。
+6. HR / 招聘专员是否不可见该入口，且直访导出页或导出接口时返回 403。
 
 ### 3.3 候选人上传与工作台
 
@@ -85,6 +87,16 @@ bash scripts/resume_app_up.sh
 3. 导出 JSON / CSV 是否正常。
 4. 非管理员访问相关接口时是否返回 `403 operation_logs_forbidden`。
 
+### 3.6 简历结果导出页
+
+1. 管理员访问 `/resume-results-export`。
+2. 按简历上传时间设置开始和结束日期后，统计区是否正确展示总数、已面试完、通过、未通过、四阶段在途数量。
+3. “已面试完”是否严格等于“通过 + 未通过”。
+4. 导出 CSV 后，记录数是否与当前筛选结果一致。
+5. 导出列是否包含上传时间、简历人员、`初筛/一面/二面/HR面` 面试人和当前状态。
+6. 人事经理访问页面与导出接口是否正常。
+7. HR / 招聘专员访问页面或导出接口时是否返回 403。
+
 ## 4. 常用验证命令
 
 ### 4.1 Python 语法检查
@@ -103,6 +115,7 @@ python -m py_compile app/backend/utils/*.py
 node --check web/login.js
 node --check web/app.js
 node --check web/jobs.js
+node --check web/resume-results-export.js
 node --check web/users.js
 node --check web/operations.js
 ```

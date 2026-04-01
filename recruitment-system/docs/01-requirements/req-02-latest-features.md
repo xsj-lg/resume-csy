@@ -2,8 +2,8 @@
 
 ## 1. 文档元信息（置顶）
 
-- 当前版本: `0.1.16`
-- 对应平台版本: `0.1.16`
+- 当前版本: `0.1.18`
+- 对应平台版本: `0.1.18`
 - 作用: 记录当前系统已支持能力，仅描述事实。
 - GOVERNED_BY: `docs/00-governance/gov-02-requirements.md`
 
@@ -11,6 +11,8 @@
 
 | date | version | 对应平台版本 | summary |
 | --- | --- | --- | --- |
+| `2026-04-01` | `0.1.18` | `0.1.18` | 1. 发布简历结果导出页：主页面与岗位管理页提供“简历结果导出”入口，新增独立导出页并支持按简历上传时间筛选。<br>2. 发布结果统计与导出能力：页面支持总数、已面试完、通过、未通过、四阶段在途数统计，并可导出包含上传时间、简历人员、四阶段面试人、当前状态、AI自动评分与AI自动评分详细描述的表格。<br>3. 发布权限与性能修复：结果导出入口/页面/导出接口仅管理员与人事经理可用；阶段按钮权限按角色与指派关系收紧；候选人详情读取不再因同步结构化抽取阻塞首屏。 |
+| `2026-03-30` | `0.1.17` | `0.1.17` | 1. 发布五角色权限模型：用户管理与工作台切换到 `administrator/hr_specialist/personnel_manager/engineering_manager/algorithm_manager`。<br>2. 发布按阶段负责人控制可见范围：研发经理与算法经理仅可查看在 `初筛/一面/二面` 任一阶段被指派给自己的候选人，重置阶段会清空全部阶段面试人。<br>3. 发布阶段面评交互改造：流程按钮下沉到“阶段面评信息”区域，点击“通过并进入下阶段”时补录下一阶段面试时间与阶段面试人。 |
 | `2026-03-27` | `0.1.16` | `0.1.16` | 1. 发布 PDF 解析服务接口读取、数据库缓存复用与结构化抽取/自动评分统一事实源。<br>2. 发布结构化抽取字段级融合回显：规则初抽先展示，大模型结果按“有值覆盖、无值保留”替换，并同步候选人名称。<br>3. 发布 PDF 解析配置文件外置与失败自动回退旧工具能力。 |
 | `2026-03-26` | `0.1.15` | `0.1.15` | 1. 发布操作记录页：支持日志查询、详情查看、同对象上一条记录比对与 JSON/CSV 导出。<br>2. 发布工作台最近查看恢复：跨页返回后自动恢复上次查看的候选人/简历上下文。<br>3. 发布自动评分明细复核：总分按评分项累加校验，并完整展示评分项证据与置信度。<br>4. 发布评分表分段结构解析增强与协作治理执行校验补充。<br>5. 明确用户确认“已发布完成”时，文档状态必须同步闭环更新。 |
 | `2026-03-24` | `0.1.14` | `0.1.14` | 1. 发布自动评分输入收敛：评分表去重规范化、结构化候选人信息优先入模、阈值参数一致性与严格 JSON 输出。<br>2. 发布候选人多维筛选增强：支持流程状态、学校、学历、年限、评分区间、上传日期下拉与自定义区间。<br>3. 发布左栏筛选区与面试日历滚动优化：多列排布下支持内部滚动查看。 |
@@ -35,7 +37,10 @@
 | 后端分层架构（控制/服务/仓储/工具） | `available` | `app/server.py`, `app/backend/controllers/resume_controller.py`, `app/backend/services/recruitment_service.py`, `app/backend/repositories/sqlite_helpers.py`, `app/backend/utils/time_utils.py` | 现阶段仍在同一代码仓内单体运行，尚未拆分为独立部署单元。 |
 | 登录与会话鉴权（Cookie Session） | `available` | `app/server.py`, `web/login.html`, `web/login.js`, `web/app.js` | 当前不支持第三方 SSO。 |
 | 用户管理（管理员操作） | `available` | `app/server.py`, `web/users.html`, `web/users.js`, `web/styles.css` | 当前无细粒度 RBAC，仅区分管理员门禁与普通用户。 |
-| 角色定义模块（四类角色） | `available` | `app/server.py`, `web/users.js`, `web/app.js` | 角色定义已标准化，但部分业务页权限仍在持续收敛中。 |
+| 角色定义模块（五类角色） | `available` | `app/backend/services/role_user_service.py`, `web/users.js`, `web/app.js` | 当前角色已切换为 `administrator/hr_specialist/personnel_manager/engineering_manager/algorithm_manager`，历史错误角色需依赖迁移纠偏。 |
+| 按阶段负责人控制候选人可见范围 | `available` | `app/backend/services/candidate_workflow_service.py`, `app/backend/controllers/candidate_controller.py`, `web/app.js` | 研发经理与算法经理仅对在 `初筛/一面/二面` 任一阶段曾指派给自己的候选人拥有可见权；全量可见角色不受此限制。 |
+| 重置阶段清空全部阶段面试人 | `available` | `app/backend/services/candidate_workflow_service.py`, `project-docs/api/api-documentation.md` | 重置后流程回到 `初筛`，历史阶段面试人记录会被删除。 |
+| 当前阶段面试人可推进流程 | `available` | `app/backend/services/candidate_workflow_service.py`, `app/backend/controllers/candidate_controller.py`, `web/app.js` | 管理员、HR 可直接流转；人事经理可在 `HR面` 流转；当前阶段被明确指派的面试人也可执行 `通过并进入下阶段` / `未通过`，并在推进时补录下一阶段安排；`重置阶段` 仍保留原高权限边界。 |
 | 用户管理编辑弹窗（状态/角色/部门范围） | `available` | `web/users.html`, `web/users.js`, `app/server.py` | 仅管理员可编辑用户；当前编辑范围不包含用户名与密码（密码需走重置流程）。 |
 | 用户角色与部门范围联动校验 | `available` | `app/server.py`, `web/users.js`, `web/users.html` | `hiring_manager` 角色要求必填部门范围；其他角色不保留部门范围。 |
 | 上传与筛选支持部门维度 | `available` | `web/index.html`, `web/app.js`, `app/backend/services/recruitment_service.py`, `app/backend/controllers/resume_controller.py` | 部门负责人视角不显示部门筛选，候选人部门编辑仅管理员与 HR 可操作。 |
@@ -57,8 +62,9 @@
 | 候选人删除联动本地文件删除 | `available` | `app/server.py`, `web/index.html`, `web/app.js` | 删除为硬删除，当前无回收站恢复能力。 |
 | 候选人名称编辑与持久化回显 | `available` | `web/index.html`, `web/app.js`, `app/server.py` | 名称编辑入口位于通用信息区域。 |
 | 本地目录手动同步导入 | `available` | `web/index.html`, `web/app.js`, `app/server.py` | 同步为手动触发，不含后台定时任务。 |
-| 面试阶段节点交互增强 | `available` | `web/app.js`, `web/styles.css`, `web/index.html`, `app/server.py` | 四节点阶段（初筛/一面/二面/HR面）流转与重置已支持；阶段状态颜色含当前进行中红点语义。 |
+| 面试阶段节点交互增强 | `available` | `web/app.js`, `web/styles.css`, `web/index.html`, `app/backend/controllers/candidate_controller.py`, `app/backend/services/candidate_workflow_service.py` | 阶段动作入口已下沉到“阶段面评信息”区域；点击“通过并进入下阶段”时，若存在下一阶段，则需先补录下一阶段面试时间与阶段面试人。 |
 | 阶段面试人分配与回显 | `available` | `app/server.py`, `web/index.html`, `web/app.js` | 每阶段当前仅支持单个面试人。 |
+| 阶段面评信息与当前阶段强绑定 | `available` | `web/index.html`, `web/app.js` | 切换到 `初筛/一面/二面/HR面` 时，下方阶段面评信息始终对应当前选中阶段。 |
 | 阶段/通用信息分离保存 | `available` | `web/app.js`, `web/index.html`, `app/server.py` | 提供阶段信息与通用信息分离保存入口；保留旧聚合接口兼容。 |
 | 候选人列表名称/岗位筛选 | `available` | `app/server.py`, `web/app.js`, `web/index.html` | 支持名称模糊筛选、岗位精确/模糊筛选和组合筛选，支持一键重置。 |
 | 候选人列表多维筛选（含上传日期） | `available` | `web/index.html`, `web/app.js`, `web/styles.css`, `app/backend/controllers/candidate_controller.py`, `app/backend/services/candidate_service.py`, `project-docs/api/api-documentation.md` | 支持 `stage_status`、`school`、`education`、`duration`、`score_min/score_max`、`upload_date/uploaded_from/uploaded_to`；筛选质量依赖候选人字段完整度。 |
@@ -78,6 +84,7 @@
 
 | version | date | 对应平台版本 | detail |
 | --- | --- | --- | --- |
+| `0.1.17` | `2026-03-30` | `0.1.17` | 发布五角色权限模型与面试流程交互改造：用户管理和工作台切换到五角色模型，研发经理与算法经理按 `初筛/一面/二面` 任一阶段指派关系获得候选人可见权；阶段动作入口下沉到“阶段面评信息”区域，推进时支持补录下一阶段面试时间与阶段面试人并联动后端 `next_round` 写入。 |
 | `0.1.16` | `2026-03-27` | `0.1.16` | 发布 PDF 解析服务接口读取、解析结果落库缓存与数据库优先复用；发布结构化抽取字段级融合回显与候选人名称同步；发布 PDF 解析配置文件外置与失败自动回退旧工具能力。 |
 | `0.1.15` | `2026-03-26` | `0.1.15` | 发布操作记录页、工作台最近查看恢复、自动评分总分校验与评分项明细展示、评分表分段结构解析增强与协作治理补充；明确用户确认“已发布完成”后文档状态需同步闭环更新。 |
 | `0.1.14` | `2026-03-24` | `0.1.14` | 发布自动评分输入收敛与严格 JSON 输出能力；发布候选人多维筛选（含上传日期）与左栏滚动优化。 |

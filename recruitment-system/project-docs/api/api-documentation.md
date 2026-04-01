@@ -29,6 +29,7 @@
 | GET | `/login` | 登录页 |
 | GET | `/users` | 用户管理页 |
 | GET | `/jobs` | 岗位管理页 |
+| GET | `/resume-results-export` | 简历结果导出页 |
 | GET | `/static/operations.html` | 操作记录页静态入口 |
 | GET | `/static/<file>` | 静态资源，如 `app.js`、`jobs.js`、`operations.js`、`styles.css` |
 | GET | `/api/healthz` | 健康检查，返回 `{ok, time}` |
@@ -98,6 +99,34 @@
 | POST | `/api/jobs/{job_id}/score-table` | 管理员 / HR | 上传岗位评分表 |
 | GET | `/api/jobs/{job_id}/score-table` | 管理员 / HR / 部门负责人 | 查看当前生效评分表预览 |
 | DELETE | `/api/jobs/{job_id}/score-table/{version_no}` | 管理员 / HR | 删除岗位评分表版本 |
+| GET | `/api/resume-results/summary` | 管理员 / 人事经理 | 按简历上传时间筛选并返回简历结果统计与列表 |
+| GET | `/api/resume-results/export` | 管理员 / 人事经理 | 按当前筛选条件导出简历结果表格 |
+
+简历结果导出接口建议支持的筛选参数：
+
+- `uploaded_from`
+- `uploaded_to`
+
+`/api/resume-results/summary` 返回建议至少包含：
+
+- 当前筛选条件
+- 统计汇总：`total_count`、`finished_count`、`passed_count`、`failed_count`
+- 当前处于 `初筛` / `一面` / `二面` / `HR面` 的数量
+- 当前筛选命中的简历列表
+
+`/api/resume-results/export` 当前需求口径至少支持：
+
+- `format=csv`
+
+导出列至少包括：
+
+- `uploaded_at`
+- `candidate_name`
+- `screening_interviewer`
+- `first_interviewer`
+- `second_interviewer`
+- `hr_interviewer`
+- `current_status`
 
 ## 7. 候选人与简历接口
 
@@ -155,3 +184,17 @@
 2. 文件上传统一使用 `multipart/form-data`。
 3. 控制器层通过 `recruitment_service.py` 聚合导出服务函数。
 4. 操作记录页是独立静态页面，但数据完全来自后端接口，不是纯前端 mock。
+
+## 11. 2026-03-27 权限口径补充
+
+- `/api/roles/definitions` 与 `/api/users/options` 返回的角色模型以五类角色为准：`administrator`、`hr_specialist`、`personnel_manager`、`engineering_manager`、`algorithm_manager`。
+- `/api/jobs` 的查看权限口径为 `administrator` / `hr_specialist` / `personnel_manager`。
+- `/resume-results-export`、`/api/resume-results/summary` 与 `/api/resume-results/export` 的权限口径为 `administrator` / `personnel_manager`，`hr_specialist` 不可访问。
+- `/api/candidates`、`/api/evaluations/{candidate_id}`、`/api/resumes/{candidate_id}` 的可见范围按候选人与 `一面` / `二面` 负责人关系动态生效。
+- `engineering_manager` 与 `algorithm_manager` 只能访问在 `interview_round_notes` 中 `初筛`、`一面` 或 `二面` 任一阶段指派给自己的候选人。
+- 工作台负责人下拉的前端口径为：`初筛` 保留活跃用户可选，`一面` / `二面` 仅展示 `engineering_manager` 与 `algorithm_manager`。
+- `/api/evaluations/{candidate_id}/round` 与 `/api/evaluations/{candidate_id}` 在保存 `一面` / `二面` 轮次时，会把当前登录的研发经理或算法经理写回 `interviewer_user_id`，防止代他人写入。
+- 轮次详情返回中包含当前面试人的展示名与角色名，前端在“面试阶段”区域展示负责人身份。
+- `/api/evaluations/{candidate_id}/stage` 在执行 `reset` 时，会删除该候选人的全部 `interview_round_notes` 记录，并把流程恢复到 `初筛`。
+- `/api/evaluations/{candidate_id}/stage` 在执行 `next` 时支持携带 `next_round`，用于同时写入下一阶段的 `interview_time` 与 `interviewer_user_id` 后再推进流程。
+- `/api/evaluations/{candidate_id}/stage` 的 `next` / `end` 权限口径为：管理员、HR 可直接执行；人事经理可在 `HR面` 执行；当前阶段被明确指派的面试人也可执行，其中研发经理 / 算法经理在自己负责的 `初筛`、`一面`、`二面` 候选人上可补录下一阶段安排并推进流程；`reset` 仍不下放给普通面试人。

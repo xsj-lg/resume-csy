@@ -22,15 +22,16 @@ from .candidate_domain_service import (
     validate_profile_payload,
     validate_round_payload,
     validate_stage_action_payload,
+    validate_next_round_payload,
     validate_star_payload,
 )
 from .role_user_service import (
     ROLE_ADMINISTRATOR,
-    ROLE_HIRING_MANAGER,
+    ROLE_ALGORITHM_MANAGER,
+    ROLE_ENGINEERING_MANAGER,
     ROLE_HR_SPECIALIST,
-    ROLE_INTERVIEWER,
+    ROLE_PERSONNEL_MANAGER,
     get_user_by_id,
-    user_department_scope,
     user_role_code,
 )
 
@@ -38,8 +39,10 @@ ROLE_UPLOAD_ALLOWED = {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST}
 ROLE_DELETE_CANDIDATE_ALLOWED = {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST}
 ROLE_PROFILE_WRITE_ALLOWED = {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST}
 HR_ALLOWED_ROUND_STAGES = {"初筛"}
-MANAGER_ALLOWED_ROUND_STAGES = {"二面", "HR面"}
-MANAGER_DECISION_STAGES = {"二面", "HR面"}
+PERSONNEL_ALLOWED_ROUND_STAGES = {"HR面"}
+MANAGER_INTERVIEW_STAGES = {"一面", "二面"}
+FULL_ACCESS_ROLES = {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST, ROLE_PERSONNEL_MANAGER}
+ASSIGNED_MANAGER_ROLES = {ROLE_ENGINEERING_MANAGER, ROLE_ALGORITHM_MANAGER}
 
 
 def _candidate_service():
@@ -119,7 +122,7 @@ def create_candidate_from_upload(
 
 def visible_candidate_ids_for_user(user: dict[str, Any] | None) -> set[str] | None:
     role_code = user_role_code(user)
-    if role_code == ROLE_ADMINISTRATOR:
+    if role_code in FULL_ACCESS_ROLES:
         return None
     if not user:
         return set()
@@ -130,51 +133,16 @@ def visible_candidate_ids_for_user(user: dict[str, Any] | None) -> set[str] | No
 
     candidate_service = _candidate_service()
     with connect_db(candidate_service.DB_PATH) as conn:
-        if role_code == ROLE_HR_SPECIALIST:
-            rows = conn.execute(
-                """
-                SELECT candidate_id
-                FROM candidate_files
-                WHERE is_active = 1 AND uploaded_by = ?
-                """,
-                (user_id,),
-            ).fetchall()
-            return {str(row[0]) for row in rows}
-
-        if role_code == ROLE_INTERVIEWER:
+        if role_code in ASSIGNED_MANAGER_ROLES:
             rows = conn.execute(
                 """
                 SELECT DISTINCT candidate_id
                 FROM interview_round_notes
-                WHERE interviewer_user_id = ?
+                WHERE interviewer_user_id = ? AND stage IN ('初筛', '一面', '二面')
                 """,
                 (user_id,),
             ).fetchall()
             return {str(row[0]) for row in rows}
-
-        if role_code == ROLE_HIRING_MANAGER:
-            department_scope = user_department_scope(user)
-            if not department_scope:
-                return set()
-            rows = conn.execute(
-                """
-                SELECT cp.candidate_id, cp.department_scope, cp.applied_position, cp.preset_position
-                FROM candidate_profiles cp
-                JOIN candidate_files cf ON cf.candidate_id = cp.candidate_id
-                WHERE cf.is_active = 1
-                """
-            ).fetchall()
-            visible_ids: set[str] = set()
-            for row in rows:
-                candidate_id = str(row[0] or "")
-                if not candidate_id:
-                    continue
-                candidate_scope = normalize_department_scope(str(row[1] or ""))
-                if not candidate_scope:
-                    candidate_scope = candidate_service.infer_department_scope(str(row[2] or ""), str(row[3] or ""))
-                if candidate_scope == department_scope:
-                    visible_ids.add(candidate_id)
-            return visible_ids
 
     return set()
 
@@ -229,18 +197,46 @@ def can_transition_stage(
         return False, "candidate_forbidden"
     if role_code in {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST}:
         return True, ""
-    if role_code != ROLE_HIRING_MANAGER:
-        return False, "stage_transition_forbidden"
 
     with connect_db(candidate_service.DB_PATH) as conn:
         profile = candidate_service.load_profile(conn, candidate_id)
+        current_stage = normalize_stage_name(str(profile.get("current_stage", ""))) if profile else ""
+        assigned_row = (
+            conn.execute(
+                """
+                SELECT interviewer_user_id
+                FROM interview_round_notes
+                WHERE candidate_id = ? AND stage = ?
+                """,
+                (candidate_id, current_stage or DEFAULT_STAGE),
+            ).fetchone()
+            if profile is not None
+            else None
+        )
     if profile is None:
         return False, "candidate_not_found"
-    current_stage = normalize_stage_name(str(profile.get("current_stage", ""))) or DEFAULT_STAGE
-    if current_stage not in MANAGER_DECISION_STAGES:
-        return False, "manager_stage_forbidden"
+
+    current_stage = current_stage or DEFAULT_STAGE
+
     if action == "reset":
-        return False, "manager_action_forbidden"
+        if role_code in FULL_ACCESS_ROLES:
+            return True, ""
+        return False, "stage_transition_forbidden"
+
+    if role_code == ROLE_PERSONNEL_MANAGER:
+        if current_stage not in PERSONNEL_ALLOWED_ROUND_STAGES:
+            return False, "personnel_stage_forbidden"
+        return True, ""
+
+    if role_code not in ASSIGNED_MANAGER_ROLES:
+        return False, "stage_transition_forbidden"
+    if current_stage not in {"初筛", *MANAGER_INTERVIEW_STAGES}:
+        return False, "stage_transition_forbidden"
+
+    user_id = str(user.get("id", "")).strip() if user else ""
+    assigned_user_id = str(assigned_row[0] or "").strip() if assigned_row is not None else ""
+    if not user_id or assigned_user_id != user_id:
+        return False, "interviewer_not_assigned"
     return True, ""
 
 
@@ -266,13 +262,15 @@ def can_write_round(
             return False, "hr_round_forbidden"
         return True, ""
 
-    if role_code == ROLE_HIRING_MANAGER:
-        if normalized_stage not in MANAGER_ALLOWED_ROUND_STAGES:
-            return False, "manager_round_forbidden"
+    if role_code == ROLE_PERSONNEL_MANAGER:
+        if normalized_stage not in PERSONNEL_ALLOWED_ROUND_STAGES:
+            return False, "personnel_round_forbidden"
         return True, ""
 
-    if role_code != ROLE_INTERVIEWER:
+    if role_code not in ASSIGNED_MANAGER_ROLES:
         return False, "round_forbidden"
+    if normalized_stage not in MANAGER_INTERVIEW_STAGES:
+        return False, "manager_round_forbidden"
 
     user_id = str(user.get("id", "")).strip() if user else ""
     with connect_db(candidate_service.DB_PATH) as conn:
@@ -301,44 +299,6 @@ def get_evaluation(candidate_id: str) -> dict[str, Any] | None:
         candidate_service.seed_candidate_profiles(conn)
         conn.commit()
         profile = candidate_service.load_profile(conn, candidate_id)
-        file_row = candidate_service.get_candidate_file_by_id(conn, candidate_id)
-        if (
-            profile is not None
-            and file_row is not None
-            and int(file_row.get("is_active", 0)) == 1
-            and not candidate_service.json_loads_or_empty_object(str(profile.get("resume_structured_json", "")).strip())
-            and str(profile.get("resume_extract_status", "")).strip() not in {"success", "failed"}
-        ):
-            try:
-                resume_text = candidate_service.get_candidate_resume_text(conn, candidate_id=candidate_id)
-                candidate_service.extract_and_store_resume_profile(
-                    conn,
-                    candidate_id=candidate_id,
-                    filename=str(file_row.get("original_filename", "")).strip(),
-                    candidate_name=str(file_row.get("candidate_name", "")).strip(),
-                    resume_text=resume_text,
-                )
-                profile = candidate_service.load_profile(conn, candidate_id)
-            except Exception as exc:
-                now = utc_now_iso()
-                conn.execute(
-                    """
-                    UPDATE candidate_profiles
-                    SET resume_extract_status = ?, resume_extract_source = ?, resume_extract_model = ?,
-                        resume_extract_error = ?, resume_extract_updated_at = ?, updated_at = ?
-                    WHERE candidate_id = ?
-                    """,
-                    (
-                        "failed",
-                        "llm",
-                        "",
-                        f"提取异常: {exc}",
-                        now,
-                        now,
-                        candidate_id,
-                    ),
-                )
-                profile = candidate_service.load_profile(conn, candidate_id)
         rounds = candidate_service.load_rounds(conn, candidate_id)
         auto_score = candidate_service.load_auto_score_by_candidate(conn, candidate_id)
         conn.commit()
@@ -417,7 +377,11 @@ def resolve_profile_job_binding(
     return raw_job_id, raw_job_code, raw_job_title, snapshot_json
 
 
-def transition_stage(candidate_id: str, action: str) -> dict[str, Any] | None:
+def transition_stage(
+    candidate_id: str,
+    action: str,
+    next_round_payload: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     candidate_service = _candidate_service()
     candidates = candidate_service.candidate_map()
     if candidate_id not in candidates:
@@ -435,6 +399,7 @@ def transition_stage(candidate_id: str, action: str) -> dict[str, Any] | None:
             new_current = DEFAULT_STAGE
             new_closed_from = ""
             new_terminated_at = ""
+            conn.execute("DELETE FROM interview_round_notes WHERE candidate_id = ?", (candidate_id,))
         else:
             statuses = dict(profile.get("stage_statuses", stage_status_template()))
             closed_from = profile.get("stage_closed_from", "")
@@ -460,6 +425,39 @@ def transition_stage(candidate_id: str, action: str) -> dict[str, Any] | None:
                 new_current = next_stage or INTERVIEW_STAGES[-1]
                 new_closed_from = ""
                 new_terminated_at = ""
+                if next_stage:
+                    if next_round_payload is None:
+                        raise ValueError("next_round 不能为空")
+                    next_round, error = validate_next_round_payload(next_round_payload, expected_stage=next_stage)
+                    if next_round is None:
+                        raise ValueError(error)
+                    interviewer_user_id = next_round["interviewer_user_id"]
+                    user = get_user_by_id(conn, interviewer_user_id)
+                    if user is None or int(user.get("is_active", 0)) != 1:
+                        raise ValueError("next_round.interviewer_user_id 非法或用户不可用")
+                    conn.execute(
+                        """
+                        INSERT INTO interview_round_notes (
+                            candidate_id, stage, interview_time, interviewer_user_id,
+                            planned_questions, interview_review, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(candidate_id, stage) DO UPDATE SET
+                            interview_time = excluded.interview_time,
+                            interviewer_user_id = excluded.interviewer_user_id,
+                            planned_questions = excluded.planned_questions,
+                            interview_review = excluded.interview_review,
+                            updated_at = excluded.updated_at
+                        """,
+                        (
+                            candidate_id,
+                            next_round["stage"],
+                            next_round["interview_time"],
+                            interviewer_user_id,
+                            next_round["planned_questions"],
+                            next_round["interview_review"],
+                            now,
+                        ),
+                    )
             else:
                 for stage in INTERVIEW_STAGES[:active_idx]:
                     if statuses.get(stage) == STAGE_STATUS_PENDING:

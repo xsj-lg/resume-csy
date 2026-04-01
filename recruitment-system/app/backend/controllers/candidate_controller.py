@@ -6,9 +6,11 @@ from typing import Any
 from urllib.parse import unquote
 
 from ..services.recruitment_service import (
-    ROLE_INTERVIEWER,
+    ROLE_ALGORITHM_MANAGER,
+    ROLE_ENGINEERING_MANAGER,
     can_access_candidate,
     can_delete_candidate,
+    can_export_resume_results,
     can_sync_resumes,
     can_transition_stage,
     can_upload_resume,
@@ -16,11 +18,14 @@ from ..services.recruitment_service import (
     can_write_round,
     create_candidate_from_upload,
     delete_candidate,
+    export_resume_results_for_user,
     filter_candidates,
     get_evaluation,
+    get_resume_result_summary_for_user,
     list_candidates_for_user,
     list_interview_calendar_for_user,
     parse_candidate_filters,
+    parse_resume_result_filters,
     parse_job_payload,
     resolve_resume_path,
     RESULT_FAILED,
@@ -38,6 +43,8 @@ from ..services.recruitment_service import (
     validate_stage_action_payload,
     validate_star_payload,
 )
+
+ASSIGNED_MANAGER_ROLES = {ROLE_ENGINEERING_MANAGER, ROLE_ALGORITHM_MANAGER}
 
 
 def _candidate_name_from_evaluation(item: dict[str, Any] | None) -> str:
@@ -109,6 +116,28 @@ def _log_candidate_list_debug(
 
 
 def handle_get_candidate_routes(handler: Any, parsed: Any, path: str, user: dict[str, Any]) -> bool:
+    if path == "/api/resume-results/summary":
+        if not can_export_resume_results(user):
+            handler._send_forbidden("resume_results_forbidden")
+            return True
+        filters = parse_resume_result_filters(parsed.query)
+        summary = get_resume_result_summary_for_user(user, filters)
+        handler._send_json(summary)
+        return True
+
+    if path == "/api/resume-results/export":
+        if not can_export_resume_results(user):
+            handler._send_forbidden("resume_results_forbidden")
+            return True
+        filters = parse_resume_result_filters(parsed.query)
+        filename, content_type, body = export_resume_results_for_user(user, filters)
+        handler._send_bytes(
+            body,
+            content_type=content_type,
+            headers=[("Content-Disposition", f'attachment; filename="{filename}"')],
+        )
+        return True
+
     if path == "/api/candidates":
         all_items = list_candidates_for_user(user)
         filters = parse_candidate_filters(parsed.query)
@@ -354,7 +383,7 @@ def handle_put_candidate_routes(handler: Any, path: str, user: dict[str, Any]) -
                 )
                 handler._send_forbidden(reason or "round_forbidden")
                 return True
-            if user_role_code(user) == ROLE_INTERVIEWER:
+            if user_role_code(user) in ASSIGNED_MANAGER_ROLES:
                 payload["interviewer_user_id"] = str(user.get("id", "")).strip()
             saved = save_round_only(candidate_id, payload)
             if saved is None:
@@ -456,7 +485,7 @@ def handle_put_candidate_routes(handler: Any, path: str, user: dict[str, Any]) -
                 )
                 handler._send_forbidden(reason or "round_forbidden")
                 return True
-            if user_role_code(user) == ROLE_INTERVIEWER:
+            if user_role_code(user) in ASSIGNED_MANAGER_ROLES:
                 round_payload["interviewer_user_id"] = str(user.get("id", "")).strip()
                 payload["round"] = round_payload
             saved = save_evaluation(candidate_id, payload)
@@ -787,7 +816,21 @@ def handle_post_candidate_routes(handler: Any, path: str, user: dict[str, Any]) 
                 )
                 handler._send_forbidden(reason or "stage_transition_forbidden")
                 return True
-            saved = transition_stage(candidate_id, action)
+            next_round_payload = payload.get("next_round")
+            if next_round_payload is not None and not isinstance(next_round_payload, dict):
+                record_operation_log_from_request(
+                    handler,
+                    user=user,
+                    operation_module="流程流转",
+                    operation_type="transition",
+                    biz_object_type="candidate",
+                    biz_object_id=candidate_id,
+                    operation_result=RESULT_FAILED,
+                    remark="next_round 非法",
+                )
+                handler._send_json({"error": "next_round 非法"}, status=HTTPStatus.BAD_REQUEST)
+                return True
+            saved = transition_stage(candidate_id, action, next_round_payload)
             if saved is None:
                 record_operation_log_from_request(
                     handler,

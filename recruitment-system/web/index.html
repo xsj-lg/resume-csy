@@ -14,6 +14,7 @@
         <div class="workspace-actions">
           <span id="current-user-text">未登录</span>
           <a id="jobs-manage-link" class="topbar-link" href="/jobs">岗位管理</a>
+          <a id="resume-results-export-link" class="topbar-link hidden" href="/resume-results-export">简历结果导出</a>
           <a id="operations-manage-link" class="topbar-link hidden" href="/static/operations.html">操作记录</a>
           <a id="users-manage-link" class="topbar-link" href="/users">用户管理</a>
           <button type="button" id="logout-btn" class="topbar-btn">退出登录</button>
@@ -135,11 +136,6 @@
             </div>
             <div id="stage-axis" class="stage-axis"></div>
             <p id="stage-ended-from" class="stage-ended-from hidden"></p>
-            <div class="stage-actions">
-              <button type="button" id="stage-next-btn" class="stage-action-btn">进入下一阶段</button>
-              <button type="button" id="stage-end-btn" class="stage-action-btn stage-end-btn">未通过当前阶段</button>
-              <button type="button" id="stage-reset-btn" class="stage-action-btn stage-reset-btn">重置阶段状态</button>
-            </div>
           </section>
 
           <section class="form-section">
@@ -160,7 +156,8 @@
           </section>
 
           <section class="form-section">
-            <h3 id="round-section-title">第1阶段的面评信息</h3>
+            <h3 id="round-section-title">初筛阶段的面评信息</h3>
+            <p id="stage-current-interviewer-role" class="auth-subtext">当前面试人角色：未指定</p>
             <label>
               面试时间
               <input id="interview-time" name="interview_time" type="datetime-local" />
@@ -178,6 +175,26 @@
               <textarea id="interview-review" name="interview_review" placeholder="记录本轮面评"></textarea>
             </label>
             <button type="button" id="save-round-btn" class="primary-btn">保存面评信息</button>
+            <div class="stage-actions">
+              <button type="button" id="stage-next-btn" class="stage-action-btn">通过并进入下阶段</button>
+              <button type="button" id="stage-end-btn" class="stage-action-btn stage-end-btn">未通过</button>
+              <button type="button" id="stage-reset-btn" class="stage-action-btn stage-reset-btn">重置阶段</button>
+            </div>
+            <div id="next-stage-panel" class="hidden">
+              <h4 id="next-stage-title">下一阶段安排</h4>
+              <label>
+                下一阶段面试时间
+                <input id="next-stage-interview-time" type="datetime-local" />
+              </label>
+              <label>
+                下一阶段面试人
+                <select id="next-stage-interviewer"></select>
+              </label>
+              <div class="stage-actions">
+                <button type="button" id="confirm-next-stage-btn" class="primary-btn">确认进入下一阶段</button>
+                <button type="button" id="cancel-next-stage-btn" class="secondary-btn">取消</button>
+              </div>
+            </div>
           </section>
 
           <section class="form-section">

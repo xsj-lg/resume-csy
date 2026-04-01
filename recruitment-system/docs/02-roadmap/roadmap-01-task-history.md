@@ -2,14 +2,16 @@
 
 ## 1. 文档信息
 
-- 当前版本: `0.1.16`
-- 对应平台版本: `0.1.16`
+- 当前版本: `0.1.18`
+- 对应平台版本: `0.1.18`
 - 作用: 记录已发布版本的历史任务与需求完成事实（唯一历史事实源）。
 
 ### 最近更新（最新 5 条）
 
 | date | version | 对应平台版本 | summary |
 | --- | --- | --- | --- |
+| `2026-04-01` | `0.1.18` | `0.1.18` | 1. 归档已发布需求 `REQ-v0.1.18-001`：岗位管理新增简历结果导出页、独立导出页、统计汇总、筛选导出与管理员/人事经理权限控制。<br>2. 同步完成 `req-01/req-02` 发布后回填。<br>3. `req-00/roadmap-00` 已清场并切换到下一目标版本 `0.1.19`。 |
+| `2026-03-30` | `0.1.17` | `0.1.17` | 1. 归档已发布需求 `REQ-v0.1.16-001`：五角色模型、按阶段负责人控制候选人可见范围与重置阶段清空阶段面试人。<br>2. 归档已发布需求 `REQ-v0.1.16-002`：阶段动作按钮下沉、阶段面评信息与当前阶段联动、推进时补录下一阶段安排。<br>3. 同步完成 `req-01/req-02` 发布后回填。 |
 | `2026-03-27` | `0.1.16` | `0.1.16` | 1. 归档已发布需求 `REQ-v0.1.16-001`：PDF 读取主链路切换为本地解析服务接口。<br>2. 归档已发布需求 `REQ-v0.1.16-002`：PDF 解析文本与原始结果落库缓存，自动评分/结构化抽取优先复用数据库结果。<br>3. 归档已发布需求 `REQ-v0.1.16-003`：结构化抽取回显与通用信息字段按“有值覆盖、无值保留”融合，并同步候选人名称。<br>4. 归档已发布需求 `REQ-v0.1.16-004`：PDF 解析服务配置文件化，服务失败时自动回退旧工具并继续写库。<br>5. 发布后已完成 `req-01/req-02` 回填，并切换 `req-00/roadmap-00` 到下一目标版本 `0.1.17`。 |
 | `2026-03-26` | `0.1.15` | `0.1.15` | 1. 补录已发布需求 `REQ-v0.1.15-001`：新增操作记录页面并完成统一日志留痕、详情比对与导出能力。<br>2. 补录已发布需求 `REQ-v0.1.15-002`：工作台支持记住并恢复上次查看的候选人/简历记录。<br>3. 补录已发布需求 `REQ-v0.1.15-003`：自动评分结果按评分项累加校验总分，并在工作台展示完整评分项明细。<br>4. 补录已发布需求 `REQ-v0.1.15-004`：上传评分表解析支持“维度标题行 + 评分项行 + 续行标准”的分段结构。<br>5. 补录已发布需求 `REQ-v0.1.15-005`：协作治理新增执行前强制重读 `docs/00-governance/` 与 `project-docs` 同步要求，并明确用户确认“已发布完成”后必须同步完成状态迁移。 |
 | `2026-03-24` | `0.1.14` | `0.1.14` | 1. 归档 `REQ-v0.1.14-001/002` 并发布 `v0.1.14`。<br>2. 发布后已回填 `req-01/req-02`。<br>3. 归档完成后已切换 `req-00/roadmap-00` 至下一目标版本 `0.1.15`。 |
@@ -20,6 +22,8 @@
 
 | roadmap_version | status | date | summary | refs |
 | --- | --- | --- | --- | --- |
+| `v0.1.18` | `RELEASED` | `2026-04-01` | 发布岗位管理简历结果导出能力：主页面与岗位管理页均提供“简历结果导出”入口；新增独立导出页，支持按简历上传时间筛选、统计总数/已面试完/通过/未通过/四阶段在途数；支持导出包含上传时间、简历人员、四阶段面试人、当前状态、AI自动评分与AI自动评分详细描述的表格；入口、页面和导出接口仅管理员与人事经理可用；同时收紧阶段按钮权限并修复候选人详情读取导致的首页阻塞问题。 | `web/index.html`, `web/app.js`, `web/jobs.html`, `web/jobs.js`, `web/resume-results-export.html`, `web/resume-results-export.js`, `web/styles.css`, `app/backend/controllers/system_controller.py`, `app/backend/controllers/candidate_controller.py`, `app/backend/services/candidate_query_service.py`, `app/backend/services/candidate_workflow_service.py`, `app/backend/services/role_user_service.py`, `docs/01-requirements/*`, `docs/02-roadmap/*`, `project-docs/*` |
+| `v0.1.17` | `RELEASED` | `2026-03-30` | 发布五角色权限与面试流程交互改造：用户管理与工作台切换到五角色模型，研发经理/算法经理仅可查看在 `初筛`、`一面`、`二面` 任一阶段被指派给自己的候选人，重置阶段会清空全部阶段面试人；阶段动作入口下沉到“阶段面评信息”区域，点击“通过并进入下阶段”时需补录下一阶段面试时间与阶段面试人，后端支持 `next_round` 原子写入并推进流程。 | `web/users.js`, `web/jobs.js`, `web/app.js`, `web/index.html`, `app/backend/controllers/candidate_controller.py`, `app/backend/services/candidate_workflow_service.py`, `app/backend/services/candidate_domain_service.py`, `app/backend/services/role_user_service.py`, `app/backend/repositories/candidate_repository.py`, `project-docs/product/feature-list.md`, `project-docs/api/api-documentation.md`, `docs/01-requirements/*`, `docs/02-roadmap/*` |
 | `v0.1.16` | `RELEASED` | `2026-03-27` | 发布 PDF 解析链路增强：PDF 读取切换为本地解析服务接口，解析结果与原始载荷落库缓存，结构化抽取与自动评分优先复用缓存；发布结构化抽取回显与通用信息融合增强；发布 PDF 解析配置文件外置与失败自动回退旧工具能力。 | `app/backend/services/resume_extract_service.py`, `app/backend/services/candidate_command_service.py`, `app/backend/services/candidate_workflow_service.py`, `app/backend/services/auto_score_service.py`, `app/backend/controllers/candidate_controller.py`, `web/app.js`, `config/pdf-parser-config.json`, `docs/01-requirements/*`, `docs/02-roadmap/*`, `project-docs/*` |
 | `v0.1.15` | `RELEASED` | `2026-03-26` | 补录发布操作记录页面：新增管理员可见的操作记录页、统一日志记录表、日志详情/比对/导出与关键链路留痕；补录发布工作台最近查看恢复：跨页返回时自动恢复上次查看候选人与简历上下文；补录发布自动评分明细增强：总分按评分项重算并完整展示维度下评分项；补录发布评分表分段结构解析增强与协作治理增强。 | `web/operations.html`, `web/operations.js`, `web/app.js`, `app/backend/controllers/operation_log_controller.py`, `app/backend/services/operation_log_service.py`, `app/backend/services/auto_score_service.py`, `app/backend/controllers/auth_controller.py`, `app/backend/controllers/user_role_controller.py`, `app/backend/controllers/job_controller.py`, `app/backend/controllers/candidate_controller.py`, `docs/00-governance/gov-02-requirements.md`, `docs/00-governance/gov-03-agent-collaboration.md`, `project-docs/development/development-and-integration-guidelines.md`, `docs/01-requirements/*`, `docs/02-roadmap/*` |
 | `v0.1.14` | `RELEASED` | `2026-03-24` | 发布自动评分输入收敛与候选人筛选增强能力：评分表去重规范化、结构化候选人信息优先入模、阈值参数一致性与严格 JSON 输出落地；候选人列表支持流程状态、学校、学历、年限、评分区间、上传日期筛选，并完成左栏筛选区/面试日历滚动优化。 | `web/index.html`, `web/app.js`, `web/styles.css`, `app/backend/controllers/candidate_controller.py`, `app/backend/services/candidate_service.py`, `app/backend/services/recruitment_service.py`, `docs/01-requirements/*`, `docs/02-roadmap/*`, `project-docs/api/api-documentation.md` |
@@ -38,6 +42,19 @@
 | `v0.1.1` | `RELEASED` | `2026-02-28` | 发布简历筛选系统首版（候选人列表/PDF 预览/人工录入/SQLite、一键启动）。 | `app/server.py`, `web/*`, `scripts/resume_app_up.sh` |
 
 ## 3. 已完成任务明细（历史）
+
+### v0.1.18（已发布）
+
+| requirement_id | status | item | evidence_refs | done_definition |
+| --- | --- | --- | --- | --- |
+| `REQ-v0.1.18-001` | `DONE` | 岗位管理新增简历结果导出页与导出能力 | `web/index.html`, `web/app.js`, `web/jobs.html`, `web/jobs.js`, `web/resume-results-export.html`, `web/resume-results-export.js`, `web/styles.css`, `app/backend/controllers/system_controller.py`, `app/backend/controllers/candidate_controller.py`, `app/backend/services/candidate_query_service.py`, `app/backend/services/candidate_workflow_service.py`, `app/backend/services/role_user_service.py`, `project-docs/product/feature-list.md`, `project-docs/api/api-documentation.md`, `project-docs/development/development-and-integration-guidelines.md`, `docs/01-requirements/req-00-draft.md`, `docs/02-roadmap/roadmap-00-todolist.md` | 岗位管理与主页面入口已可见且权限正确；独立导出页支持按上传时间筛选、统计总数/已面试完/通过/未通过/四阶段在途数；导出文件包含上传时间、简历人员、四阶段面试人、当前状态、AI自动评分与AI自动评分详细描述；管理员和人事经理可访问，HR 及其他无权限角色访问被拒绝；首页候选人详情读取不再阻塞登录后首屏。 |
+
+### v0.1.17（已发布）
+
+| requirement_id | status | item | evidence_refs | done_definition |
+| --- | --- | --- | --- | --- |
+| `REQ-v0.1.16-001` | `DONE` | 按角色与面试负责人控制简历可见范围 | `web/users.js`, `web/jobs.js`, `web/app.js`, `app/backend/controllers/candidate_controller.py`, `app/backend/services/candidate_workflow_service.py`, `app/backend/services/role_user_service.py`, `project-docs/product/feature-list.md`, `project-docs/api/api-documentation.md`, `docs/01-requirements/req-00-draft.md`, `docs/02-roadmap/roadmap-00-todolist.md` | 五类角色模型落地；管理员、HR、人事经理可查看全部候选人；研发经理与算法经理仅可查看在 `初筛`、`一面`、`二面` 任一阶段被指派给自己的候选人；重置阶段后清空全部阶段面试人并收回由旧记录带来的可见权。 |
+| `REQ-v0.1.16-002` | `DONE` | 面试阶段按钮与阶段面评信息交互改造 | `web/index.html`, `web/app.js`, `app/backend/controllers/candidate_controller.py`, `app/backend/services/candidate_workflow_service.py`, `app/backend/services/candidate_domain_service.py`, `project-docs/product/feature-list.md`, `project-docs/api/api-documentation.md`, `docs/01-requirements/req-00-draft.md`, `docs/02-roadmap/roadmap-00-todolist.md` | 顶部阶段区流程按钮移除；阶段面评信息与当前选中阶段严格一致；阶段动作下沉到阶段面评区；点击“通过并进入下阶段”时需补录下一阶段面试时间与阶段面试人，并通过 `next_round` 成功写入与推进流程。 |
 
 ### v0.1.16（已发布）
 

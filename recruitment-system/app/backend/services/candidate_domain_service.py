@@ -285,6 +285,23 @@ def validate_stage_action_payload(payload: dict[str, Any]) -> tuple[str | None, 
     return action, ""
 
 
+def validate_next_round_payload(
+    payload: dict[str, Any],
+    *,
+    expected_stage: str,
+) -> tuple[dict[str, str] | None, str]:
+    round_payload, error = validate_round_payload(payload)
+    if round_payload is None:
+        return None, error
+    if round_payload["stage"] != expected_stage:
+        return None, "next_round.stage 非法"
+    if not round_payload["interview_time"]:
+        return None, "next_round.interview_time 不能为空"
+    if not round_payload["interviewer_user_id"]:
+        return None, "next_round.interviewer_user_id 不能为空"
+    return round_payload, ""
+
+
 def validate_star_payload(payload: dict[str, Any]) -> tuple[int | None, str]:
     raw = payload.get("is_starred")
     if isinstance(raw, bool):
@@ -337,6 +354,7 @@ __all__ = [
     "validate_profile_payload",
     "validate_round_payload",
     "validate_stage_action_payload",
+    "validate_next_round_payload",
     "validate_star_payload",
     "current_active_stage",
 ]

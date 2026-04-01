@@ -10,10 +10,9 @@ from ..repositories.sqlite_helpers import connect_db
 from ..utils.time_utils import today_date_tag as time_today_date_tag, utc_now_iso
 from .role_user_service import (
     ROLE_ADMINISTRATOR,
-    ROLE_HIRING_MANAGER,
     ROLE_HR_SPECIALIST,
+    ROLE_PERSONNEL_MANAGER,
     normalize_department_scope,
-    user_department_scope,
     user_role_code,
 )
 from .score_table_service import (
@@ -79,7 +78,7 @@ def _resolve_job_template_path(storage_rel_path: str) -> Path | None:
 
 
 def can_view_jobs(user: dict[str, Any] | None) -> bool:
-    return user_role_code(user) in {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST, ROLE_HIRING_MANAGER}
+    return user_role_code(user) in {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST, ROLE_PERSONNEL_MANAGER}
 
 
 def can_manage_jobs(user: dict[str, Any] | None) -> bool:
@@ -390,12 +389,6 @@ def list_jobs_for_user(user: dict[str, Any] | None) -> list[dict[str, Any]]:
             """
         ).fetchall()
     items = [_row_to_job_dict(row) for row in rows]
-    role_code = user_role_code(user)
-    if role_code == ROLE_HIRING_MANAGER:
-        scope = user_department_scope(user)
-        if not scope:
-            return []
-        return [item for item in items if normalize_department_scope(str(item.get("department", ""))) == scope]
     return items
 
 
@@ -613,4 +606,3 @@ def get_job_score_table_preview(job_id: str) -> dict[str, Any]:
             else {"headers": [], "rows": [], "dimensions": [], "note": "暂无评分表预览"}
         ),
     }
-
