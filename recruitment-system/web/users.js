@@ -1,9 +1,16 @@
-const ROLE_ORDER = ["administrator", "hr_specialist", "interviewer", "hiring_manager"];
+const ROLE_ORDER = [
+  "administrator",
+  "hr_specialist",
+  "personnel_manager",
+  "engineering_manager",
+  "algorithm_manager",
+];
 const ROLE_LABELS = {
   administrator: "管理员",
   hr_specialist: "HR / 招聘专员",
-  interviewer: "面试官",
-  hiring_manager: "部门负责人 / 用人经理",
+  personnel_manager: "人事经理",
+  engineering_manager: "研发经理",
+  algorithm_manager: "算法经理",
 };
 const DEPARTMENT_SCOPES = ["销售部", "研发部", "算法部", "项目部", "人事部"];
 
@@ -181,7 +188,7 @@ async function loadRoleDefinitions() {
 
 function syncDepartmentScopeControl(roleValue, scopeElement) {
   const roleCode = normalizeRoleCode(roleValue) || "hr_specialist";
-  const isManager = roleCode === "hiring_manager";
+  const isManager = roleCode === "engineering_manager" || roleCode === "algorithm_manager";
   scopeElement.disabled = !isManager;
   if (!isManager) {
     scopeElement.value = "";
@@ -435,7 +442,7 @@ async function saveEditedUser(event) {
   }
 
   let departmentScope = "";
-  if (roleCode === "hiring_manager") {
+  if (roleCode === "engineering_manager" || roleCode === "algorithm_manager") {
     departmentScope = normalizeDepartmentScope(els.editDepartmentScope.value);
     if (!departmentScope) {
       setEditMessage(`部门范围仅支持 ${DEPARTMENT_SCOPES.join(" / ")}`, "error");
@@ -504,7 +511,7 @@ async function createUser(event) {
     password: els.newPassword.value,
     role_code: roleCode,
     department_scope:
-      roleCode === "hiring_manager"
+      roleCode === "engineering_manager" || roleCode === "algorithm_manager"
         ? normalizeDepartmentScope(els.newDepartmentScope.value) || DEPARTMENT_SCOPES[0]
         : "",
   };
