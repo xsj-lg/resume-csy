@@ -576,6 +576,8 @@ def _build_resume_result_row(
         "candidate_name": str(file_row.get("candidate_name", "")).strip(),
         "current_status": current_status,
         "active_stage": active_stage,
+        "stage_statuses": statuses,
+        "ended_stage": candidate_service.normalize_stage_name(stage_closed_from),
         "screening_interviewer": str(rounds.get("初筛", {}).get("interviewer_name", "")).strip(),
         "first_interviewer": str(rounds.get("一面", {}).get("interviewer_name", "")).strip(),
         "second_interviewer": str(rounds.get("二面", {}).get("interviewer_name", "")).strip(),
@@ -583,6 +585,51 @@ def _build_resume_result_row(
         "ai_score": auto_score.get("total_score") if isinstance(auto_score, dict) else None,
         "ai_score_summary": str((auto_score or {}).get("summary", "")).strip(),
     }
+
+
+def _build_stage_progress_counts(items: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+    candidate_service = _candidate_service()
+    stages = candidate_service.INTERVIEW_STAGES
+    stage_progress_counts = {
+        stage: {
+            "interview_count": 0,
+            "current_count": 0,
+            "passed_count": 0,
+            "failed_count": 0,
+        }
+        for stage in stages
+    }
+
+    for item in items:
+        active_stage = candidate_service.normalize_stage_name(str(item.get("active_stage", "")).strip())
+        ended_stage = candidate_service.normalize_stage_name(str(item.get("ended_stage", "")).strip())
+        current_status = str(item.get("current_status", "")).strip()
+        highest_reached_stage = ended_stage or active_stage
+        if current_status == candidate_service.STATUS_PASSED:
+            highest_reached_stage = stages[-1]
+        highest_index = candidate_service.stage_index(highest_reached_stage)
+        if highest_index < 0:
+            highest_index = 0
+
+        for stage in stages[: highest_index + 1]:
+            stage_progress_counts[stage]["interview_count"] += 1
+        if active_stage in stage_progress_counts:
+            stage_progress_counts[active_stage]["current_count"] += 1
+        if ended_stage in stage_progress_counts:
+            stage_progress_counts[ended_stage]["failed_count"] += 1
+
+    for index, stage in enumerate(stages):
+        if index + 1 < len(stages):
+            next_stage = stages[index + 1]
+            stage_progress_counts[stage]["passed_count"] = stage_progress_counts[next_stage]["interview_count"]
+        else:
+            stage_progress_counts[stage]["passed_count"] = sum(
+                1
+                for item in items
+                if str(item.get("current_status", "")).strip() == candidate_service.STATUS_PASSED
+            )
+
+    return stage_progress_counts
 
 
 def list_resume_result_rows_for_user(
@@ -664,12 +711,14 @@ def get_resume_result_summary_for_user(
         active_stage = str(item.get("active_stage", "")).strip()
         if active_stage in stage_counts:
             stage_counts[active_stage] += 1
+    stage_progress_counts = _build_stage_progress_counts(items)
     return {
         "total_count": len(items),
         "finished_count": passed_count + failed_count,
         "passed_count": passed_count,
         "failed_count": failed_count,
         "stage_counts": stage_counts,
+        "stage_progress_counts": stage_progress_counts,
         "filters": filters or {},
     }
 

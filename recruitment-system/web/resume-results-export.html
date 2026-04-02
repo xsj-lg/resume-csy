@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>简历结果导出 - AIS 简历筛选</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+    <main class="resume-export-layout">
+      <header class="jobs-header">
+        <div>
+          <h1>简历结果导出</h1>
+          <p id="resume-export-current-user" class="auth-subtext">加载中...</p>
+        </div>
+        <div class="workspace-actions">
+          <a class="topbar-link" href="/">返回工作台</a>
+          <a class="topbar-link" href="/jobs">岗位管理</a>
+          <button type="button" id="resume-export-logout-btn" class="topbar-btn">退出登录</button>
+        </div>
+      </header>
+
+      <section class="resume-export-card">
+        <div class="resume-export-filter-grid">
+          <label>
+            上传时间开始
+            <input id="resume-export-date-from" type="date" />
+          </label>
+          <label>
+            上传时间结束
+            <input id="resume-export-date-to" type="date" />
+          </label>
+          <div class="resume-export-actions">
+            <button type="button" id="resume-export-search-btn" class="primary-btn">查询统计</button>
+            <button type="button" id="resume-export-reset-btn" class="secondary-btn">重置筛选</button>
+            <button type="button" id="resume-export-download-btn" class="secondary-btn">导出表格</button>
+          </div>
+        </div>
+        <p id="resume-export-message" class="form-message"></p>
+      </section>
+
+      <section class="resume-export-stats">
+        <article class="operations-stat-card">
+          <div class="operations-stat-label">全部简历</div>
+          <div id="resume-export-total-count" class="operations-stat-value">0</div>
+        </article>
+        <article class="operations-stat-card">
+          <div class="operations-stat-label">已面试完</div>
+          <div id="resume-export-finished-count" class="operations-stat-value">0</div>
+        </article>
+        <article class="operations-stat-card">
+          <div class="operations-stat-label">通过</div>
+          <div id="resume-export-passed-count" class="operations-stat-value">0</div>
+        </article>
+        <article class="operations-stat-card">
+          <div class="operations-stat-label">未通过</div>
+          <div id="resume-export-failed-count" class="operations-stat-value">0</div>
+        </article>
+      </section>
+
+      <section class="resume-export-card">
+        <h3>当前面试阶段分布情况</h3>
+        <div class="resume-export-stage-grid">
+          <article class="resume-export-stage-item">
+            <div class="operations-stat-label">初筛</div>
+            <div id="resume-export-stage-screening" class="operations-stat-value">0</div>
+          </article>
+          <article class="resume-export-stage-item">
+            <div class="operations-stat-label">一面</div>
+            <div id="resume-export-stage-first" class="operations-stat-value">0</div>
+          </article>
+          <article class="resume-export-stage-item">
+            <div class="operations-stat-label">二面</div>
+            <div id="resume-export-stage-second" class="operations-stat-value">0</div>
+          </article>
+          <article class="resume-export-stage-item">
+            <div class="operations-stat-label">HR面</div>
+            <div id="resume-export-stage-hr" class="operations-stat-value">0</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="resume-export-card">
+        <h3>面试阶段统计明细</h3>
+        <div
+          id="resume-export-stage-progress-list"
+          class="resume-export-stage-grid"
+          style="grid-template-columns: 1fr;"
+        ></div>
+      </section>
+    </main>
+
+    <script src="/static/resume-results-export.js"></script>
+  </body>
+</html>

@@ -111,8 +111,12 @@
 
 - 当前筛选条件
 - 统计汇总：`total_count`、`finished_count`、`passed_count`、`failed_count`
-- 当前处于 `初筛` / `一面` / `二面` / `HR面` 的数量
+- 当前处于 `初筛` / `一面` / `二面` / `HR面` 的数量，字段为 `stage_counts`
+- 按 `初筛` / `一面` / `二面` / `HR面` 返回分阶段统计，字段为 `stage_progress_counts`
+- `stage_progress_counts.<阶段>` 至少包含：`interview_count`、`current_count`、`passed_count`、`failed_count`
+- 分阶段统计采用阶段承接口径：前 3 个阶段的 `passed_count` 分别等于下一阶段的 `interview_count`，`HR面.passed_count` 等于最终 `passed_count`
 - 当前筛选命中的简历列表
+
 
 `/api/resume-results/export` 当前需求口径至少支持：
 
@@ -133,8 +137,8 @@
 | 方法 | 路径 | 权限 | 说明 |
 | --- | --- | --- | --- |
 | GET | `/api/candidates` | 已登录 | 查询候选人列表 |
-| GET | `/api/resumes/{candidate_id}` | 已登录且可见 | 获取简历文件预览，按实际文件类型返回 PDF 或图片 |
-| POST | `/api/resumes/upload` | 管理员 / HR | 上传 PDF 或图片简历；图片上传依赖本地解析服务成功返回 |
+| GET | `/api/resumes/{candidate_id}` | 已登录且可见 | 获取简历 PDF |
+| POST | `/api/resumes/upload` | 管理员 / HR | 上传 PDF 简历 |
 | POST | `/api/resumes/sync` | 管理员 / HR | 同步本地简历目录 |
 | DELETE | `/api/candidates/{candidate_id}` | 管理员 / HR | 删除候选人 |
 | GET | `/api/interviews/calendar` | 已登录 | 获取面试日历 |
