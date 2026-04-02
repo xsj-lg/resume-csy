@@ -174,6 +174,7 @@ from .resume_extract_service import (
     extract_and_store_resume_profile,
     extract_pdf_text,
     get_candidate_resume_text,
+    parse_resume_file,
     trigger_resume_extract_for_candidate,
 )
 from .score_table_service import (
@@ -221,6 +222,18 @@ SQLITE_LOCK_RETRY_DELAY_SECONDS = 0.15
 UUID32_PATTERN = re.compile(r"^[0-9a-f]{32}$")
 DATE_TAG_PATTERN = re.compile(r"^\d{8}$")
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+RESUME_CONTENT_TYPE_BY_EXTENSION = {
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".bmp": "image/bmp",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+}
+IMAGE_RESUME_EXTENSIONS = {
+    extension for extension in RESUME_CONTENT_TYPE_BY_EXTENSION if extension != ".pdf"
+}
 
 ROLE_UPLOAD_ALLOWED = {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST}
 ROLE_DELETE_CANDIDATE_ALLOWED = {ROLE_ADMINISTRATOR, ROLE_HR_SPECIALIST}
@@ -284,8 +297,8 @@ def sanitize_uploaded_filename(filename: str) -> str:
     normalized = normalized.replace("\x00", "")
     if not normalized:
         raise ValueError("文件名不能为空")
-    if not normalized.lower().endswith(".pdf"):
-        raise ValueError("仅支持上传 PDF 文件")
+    if Path(normalized).suffix.lower() not in RESUME_CONTENT_TYPE_BY_EXTENSION:
+        raise ValueError("仅支持上传 PDF 或图片文件")
     return normalized
 
 
@@ -299,9 +312,47 @@ def resolve_storage_path(storage_rel_path: str) -> Path | None:
         file_path.relative_to(root)
     except ValueError:
         return None
-    if file_path.suffix.lower() != ".pdf":
+    if file_path.suffix.lower() not in RESUME_CONTENT_TYPE_BY_EXTENSION:
         return None
     return file_path
+
+
+def guess_resume_content_type(filename: str) -> str:
+    extension = Path(str(filename or "")).suffix.lower()
+    return RESUME_CONTENT_TYPE_BY_EXTENSION.get(extension, "application/octet-stream")
+
+
+def is_image_resume_filename(filename: str) -> bool:
+    return Path(str(filename or "")).suffix.lower() in IMAGE_RESUME_EXTENSIONS
+
+
+def _looks_like_supported_image(content: bytes, extension: str) -> bool:
+    if extension == ".png":
+        return content.startswith(b"\x89PNG\r\n\x1a\n")
+    if extension in {".jpg", ".jpeg"}:
+        return content.startswith(b"\xff\xd8\xff")
+    if extension == ".gif":
+        return content.startswith((b"GIF87a", b"GIF89a"))
+    if extension == ".bmp":
+        return content.startswith(b"BM")
+    if extension == ".webp":
+        return len(content) >= 12 and content.startswith(b"RIFF") and content[8:12] == b"WEBP"
+    return False
+
+
+def ensure_resume_content(filename: str, content: bytes) -> None:
+    if not content:
+        raise ValueError("上传文件为空")
+    extension = Path(str(filename or "")).suffix.lower()
+    if extension == ".pdf":
+        if not content.startswith(b"%PDF-"):
+            raise ValueError("文件内容不是有效 PDF")
+        return
+    if extension in IMAGE_RESUME_EXTENSIONS:
+        if not _looks_like_supported_image(content, extension):
+            raise ValueError("文件内容不是有效图片")
+        return
+    raise ValueError("仅支持上传 PDF 或图片文件")
 
 
 def resolve_job_template_path(storage_rel_path: str) -> Path | None:
@@ -320,10 +371,7 @@ def resolve_job_template_path(storage_rel_path: str) -> Path | None:
 
 
 def ensure_pdf_content(content: bytes) -> None:
-    if not content:
-        raise ValueError("上传文件为空")
-    if not content.startswith(b"%PDF-"):
-        raise ValueError("文件内容不是有效 PDF")
+    ensure_resume_content("resume.pdf", content)
 
 
 

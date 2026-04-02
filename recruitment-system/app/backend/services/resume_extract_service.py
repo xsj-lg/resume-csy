@@ -100,12 +100,15 @@ def _load_resume_parser_runtime() -> dict[str, Any]:
 
 
 def _build_resume_parser_request_body(file_path: Path) -> tuple[bytes, str]:
+    candidate_service = _candidate_service()
     content = file_path.read_bytes()
+    upload_filename = file_path.name.replace('"', "") or "resume.bin"
+    content_type = candidate_service.guess_resume_content_type(upload_filename)
     boundary = f"----ResumeAppBoundary{uuid.uuid4().hex}"
     header = (
         f"--{boundary}\r\n"
-        'Content-Disposition: form-data; name="file"; filename="resume.pdf"\r\n'
-        "Content-Type: application/pdf\r\n\r\n"
+        f'Content-Disposition: form-data; name="file"; filename="{upload_filename}"\r\n'
+        f"Content-Type: {content_type}\r\n\r\n"
     ).encode("utf-8")
     footer = f"\r\n--{boundary}--\r\n".encode("utf-8")
     return header + content + footer, boundary
@@ -219,11 +222,15 @@ def _extract_pdf_text_with_legacy_tools(file_path: Path) -> tuple[str, str]:
     raise ValueError("；".join(errors))
 
 
-def _parse_pdf_text_with_runtime(file_path: Path) -> tuple[dict[str, Any], str]:
+def parse_resume_file(file_path: Path) -> tuple[dict[str, Any], str]:
     runtime = _load_resume_parser_runtime()
+    candidate_service = _candidate_service()
+    is_image_file = candidate_service.is_image_resume_filename(file_path.name)
     try:
         return _parse_pdf_text_with_payload(file_path, runtime)
     except Exception as parser_exc:
+        if is_image_file:
+            raise ValueError(f"图片解析失败: {parser_exc}") from parser_exc
         if not bool(runtime.get("fallback_enabled", DEFAULT_RESUME_PARSER_FALLBACK_ENABLED)):
             raise
         legacy_text, legacy_tool = _extract_pdf_text_with_legacy_tools(file_path)
@@ -288,7 +295,7 @@ def _extract_text_from_parser_payload(raw_payload: dict[str, Any]) -> str:
 
 
 def extract_pdf_text(file_path: Path) -> str:
-    _, extracted_text = _parse_pdf_text_with_runtime(file_path)
+    _, extracted_text = parse_resume_file(file_path)
     return extracted_text
 
 
@@ -362,7 +369,7 @@ def get_candidate_resume_text(
             return cached_text
         raise ValueError("候选人简历文件不存在且数据库无可用解析缓存")
 
-    raw_payload, resume_text = _parse_pdf_text_with_runtime(file_path)
+    raw_payload, resume_text = parse_resume_file(file_path)
     _store_candidate_resume_cache(
         conn,
         candidate_id=candidate_id,
@@ -888,6 +895,7 @@ def trigger_resume_extract_for_candidate(candidate_id: str, *, force_refresh: bo
 
 __all__ = [
     "extract_pdf_text",
+    "parse_resume_file",
     "get_candidate_resume_text",
     "normalize_resume_structured_payload",
     "extract_and_store_resume_profile",

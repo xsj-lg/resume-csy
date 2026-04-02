@@ -59,9 +59,9 @@ bash scripts/resume_app_up.sh
 
 ### 3.3 候选人上传与工作台
 
-1. 上传 PDF 简历并绑定岗位。
+1. 上传 PDF 或图片简历并绑定岗位。
 2. 列表是否出现新候选人。
-3. 简历 PDF 是否能在右侧 iframe 打开。
+3. 简历文件是否能在右侧 iframe 打开，PDF 与图片预览类型正确。
 4. 通用信息保存后是否回显。
 5. 流程推进后阶段状态是否更新。
 6. 面试时间是否进入面试日历。
@@ -79,6 +79,8 @@ bash scripts/resume_app_up.sh
 8. 简历刚上传完成时，规则初抽的手机号、邮箱和摘要是否已先写入 `resume_structured_json` 并可在页面回显。
 9. 大模型结构化抽取完成后，页面字段是否遵守“有值覆盖、无值保留”，空值不会覆盖规则初抽或人工已有值。
 10. 模拟本地 PDF 解析服务不可达或超时后，系统是否会自动回退旧的 PDF 文本提取工具，并继续把结果写入 `candidate_files`。
+11. 上传图片简历时，是否同样调用本地解析服务并写入 `candidate_files` 解析缓存。
+12. 上传图片简历时若本地解析服务不可达、超时、异常或空结果，接口是否直接返回解析失败且不保留上传结果。
 
 ### 3.5 操作记录页
 
@@ -185,6 +187,7 @@ node --check web/operations.js
 ## 8.5 PDF 解析服务协作约定
 
 - 简历 PDF 文本读取当前优先通过本地解析服务完成，而不是直接使用本地 `pypdf` 链路。
+- 图片简历上传时也会复用同一解析服务接口与 `file` 上传字段。
 - 默认配置文件路径：`config/pdf-parser-config.json`
 - 默认解析服务地址：`http://127.0.0.1:7642/ais/parser/syncParseFile`
 - 运行时优先读取 `pdf-parser-config.json` 中的 `service_url`、`timeout_seconds` 和 `fallback_enabled`。
@@ -193,6 +196,7 @@ node --check web/operations.js
 - 解析服务返回结果以 `pages[].paragraphs[].textPara.content` 为主要文本来源，联调时应优先检查该结构是否稳定。
 - 首次解析成功后，会将解析文本和原始结果缓存到 `candidate_files`；后续自动评分、详情兜底抽取与再次读取文本时优先复用数据库缓存。
 - 当解析服务不可达、超时、返回异常状态、非法 JSON 或空结果时，会自动回退旧的 PDF 文本提取工具，并将回退文本与来源信息同样写入 `candidate_files`。
+- 当上传文件为图片时，不启用旧 PDF 工具回退；若解析服务失败，上传接口直接返回解析失败。
 - 手动调用 `/api/evaluations/{candidate_id}/resume-extract` 时，若数据库中已有可用解析缓存，则结构化抽取会直接复用缓存，不再默认重新请求解析服务。
 - 上传完成后的规则初抽会先把手机号、邮箱和摘要写入 `candidate_profiles.resume_structured_json`，用于页面即时回显。
 - 大模型结构化抽取成功后，会在保留既有结果的前提下按字段级合并 `resume_structured_json`，仅用非空有效值覆盖原字段。

@@ -19,6 +19,7 @@ from .candidate_service import (  # noqa: F401
     export_resume_results_for_user,
     filter_candidates,
     get_resume_result_summary_for_user,
+    guess_resume_content_type,
     list_candidates_for_user,
     list_interview_calendar_for_user,
     now_ts,

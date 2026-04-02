@@ -133,8 +133,8 @@
 | 方法 | 路径 | 权限 | 说明 |
 | --- | --- | --- | --- |
 | GET | `/api/candidates` | 已登录 | 查询候选人列表 |
-| GET | `/api/resumes/{candidate_id}` | 已登录且可见 | 获取简历 PDF |
-| POST | `/api/resumes/upload` | 管理员 / HR | 上传 PDF 简历 |
+| GET | `/api/resumes/{candidate_id}` | 已登录且可见 | 获取简历文件预览，按实际文件类型返回 PDF 或图片 |
+| POST | `/api/resumes/upload` | 管理员 / HR | 上传 PDF 或图片简历；图片上传依赖本地解析服务成功返回 |
 | POST | `/api/resumes/sync` | 管理员 / HR | 同步本地简历目录 |
 | DELETE | `/api/candidates/{candidate_id}` | 管理员 / HR | 删除候选人 |
 | GET | `/api/interviews/calendar` | 已登录 | 获取面试日历 |

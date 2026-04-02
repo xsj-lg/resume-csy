@@ -106,7 +106,7 @@ def create_candidate_from_upload(
 ) -> dict[str, Any]:
     candidate_service = _candidate_service()
     safe_filename = candidate_service.sanitize_uploaded_filename(filename)
-    candidate_service.ensure_pdf_content(content)
+    candidate_service.ensure_resume_content(safe_filename, content)
     final_name = (candidate_name or "").strip() or Path(safe_filename).stem
     if not final_name:
         final_name = "未命名候选人"
@@ -145,11 +145,27 @@ def create_candidate_from_upload(
         relative_path,
         fallback=candidate_service.today_date_tag(),
     )
+    resume_text = ""
+    resume_parser_payload: dict[str, Any] = {}
+    resume_parser_updated_at = ""
 
     try:
         target_path.write_bytes(content)
-    except OSError as exc:
-        raise ValueError("保存文件失败") from exc
+        try:
+            resume_parser_payload, resume_text = candidate_service.parse_resume_file(target_path)
+            resume_parser_updated_at = candidate_service.utc_now_iso()
+        except Exception as exc:
+            if candidate_service.is_image_resume_filename(safe_filename):
+                raise ValueError(f"解析失败: {exc}") from exc
+            print(f"[upload parse] skipped for {safe_filename}: {exc}")
+    except Exception as exc:
+        try:
+            target_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        if isinstance(exc, OSError):
+            raise ValueError("保存文件失败") from exc
+        raise
 
     try:
         with connect_db(candidate_service.DB_PATH) as conn:
@@ -162,8 +178,9 @@ def create_candidate_from_upload(
                 """
                 INSERT INTO candidate_files (
                     candidate_id, candidate_name, original_filename, storage_rel_path,
-                    inflow_date, uploaded_at, uploaded_by, is_active
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                    inflow_date, resume_parsed_text, resume_parser_payload_json,
+                    resume_parser_updated_at, uploaded_at, uploaded_by, is_active
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                 """,
                 (
                     candidate_id,
@@ -171,6 +188,13 @@ def create_candidate_from_upload(
                     safe_filename,
                     relative_path,
                     inflow_date,
+                    resume_text,
+                    (
+                        json.dumps(resume_parser_payload, ensure_ascii=False, separators=(",", ":"))
+                        if resume_parser_payload
+                        else ""
+                    ),
+                    resume_parser_updated_at,
                     candidate_service.utc_now_iso(),
                     uploaded_by,
                 ),
@@ -199,14 +223,11 @@ def create_candidate_from_upload(
             pass
         raise
 
-    resume_text = ""
-    try:
-        with connect_db(candidate_service.DB_PATH) as conn:
-            resume_text = candidate_service.get_candidate_resume_text(conn, candidate_id=candidate_id)
-            conn.commit()
-        _store_basic_resume_info(candidate_id, resume_text)
-    except Exception as exc:
-        print(f"[basic extract] failed for {candidate_id}: {exc}")
+    if resume_text:
+        try:
+            _store_basic_resume_info(candidate_id, resume_text)
+        except Exception as exc:
+            print(f"[basic extract] failed for {candidate_id}: {exc}")
     _set_resume_extract_pending(candidate_id)
     _schedule_async_resume_tasks(candidate_id, bool(snapshot.get("auto_score_enabled", False)))
 

@@ -109,8 +109,9 @@ bash scripts/resume_app_up.sh
    - 岗位评分表目录
 4. 若启用 LLM 能力，需准备可用的 `llm-config.json` 与 `llm-prompts.json`。
 5. 准备 `config/pdf-parser-config.json`，并确认其中的 PDF 解析服务地址、超时和回退开关符合当前环境。
-6. 若本地 PDF 解析服务不可用，确保旧的 PDF 文本提取依赖可用；否则简历抽取与自动评分输入会整体失败。
-7. 数据库升级时会自动为 `candidate_files` 增加 PDF 解析缓存字段，首次启动新版本时需保证 SQLite 文件可写。
+6. 若需要上传图片简历，必须保证本地 PDF 解析服务可用；图片上传不支持旧 PDF 工具回退。
+7. 若本地 PDF 解析服务不可用，确保旧的 PDF 文本提取依赖可用；否则 PDF 简历抽取与自动评分输入会失败。
+8. 数据库升级时会自动为 `candidate_files` 增加 PDF 解析缓存字段，首次启动新版本时需保证 SQLite 文件可写。
 
 ## 6. 健康检查与巡检
 
@@ -135,7 +136,7 @@ bash scripts/resume_app_up.sh
 5. `data/cv/ais/` 和 `data/job_templates/` 是否存在。
 6. 若启用 LLM，管理员页能否读取 `/api/settings/llm-config`。
 7. 若需要审计能力，管理员能否访问 `/static/operations.html` 并正常拉取 `/api/operation-logs`。
-8. 本地 PDF 解析服务是否可达，且对真实 PDF 返回合法 JSON。
+8. 本地 PDF 解析服务是否可达，且对真实 PDF/图片上传都能返回合法 JSON。
 9. 抽样检查 `candidate_files.resume_parsed_text` / `resume_parser_payload_json` 是否已写入，确认解析缓存可复用。
 
 ## 7. 日志与故障排查
@@ -169,12 +170,14 @@ bash scripts/resume_app_up.sh
 排查顺序：
 
 1. 文件是否为 PDF。
-2. 文件大小是否超过 `20MB`。
-3. 上传时是否选择了岗位与部门。
-4. `data/cv/ais/` 是否可写。
-5. `config/pdf-parser-config.json` 是否为合法 JSON，且 `service_url`、`timeout_seconds`、`fallback_enabled` 配置正确。
-6. 本地 PDF 解析服务是否正常运行；若服务异常，确认旧的 PDF 文本提取回退链路是否仍可用。
-7. 若文件仍在但重复评分/抽取明显变慢，检查 `candidate_files` 中是否存在解析缓存写入失败。
+2. 若上传的是图片，文件后缀是否为 `png/jpg/jpeg/bmp/gif/webp` 且内容有效。
+3. 文件大小是否超过 `20MB`。
+4. 上传时是否选择了岗位与部门。
+5. `data/cv/ais/` 是否可写。
+6. `config/pdf-parser-config.json` 是否为合法 JSON，且 `service_url`、`timeout_seconds`、`fallback_enabled` 配置正确。
+7. 本地 PDF 解析服务是否正常运行；若上传的是 PDF 且服务异常，再确认旧的 PDF 文本提取回退链路是否仍可用。
+8. 若上传的是图片，解析服务异常时接口应直接报错，且不应残留脏数据。
+9. 若文件仍在但重复评分/抽取明显变慢，检查 `candidate_files` 中是否存在解析缓存写入失败。
 
 #### 评分表上传失败
 

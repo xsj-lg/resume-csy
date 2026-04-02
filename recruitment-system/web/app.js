@@ -2061,7 +2061,7 @@ async function uploadResume(event) {
 
   const files = Array.from(els.uploadFile.files || []);
   if (files.length === 0) {
-    setUploadMessage("请选择至少一个 PDF 文件", "error");
+    setUploadMessage("请选择至少一个 PDF 或图片文件", "error");
     return;
   }
   const candidateName = els.uploadCandidateName.value.trim();
@@ -2073,8 +2073,8 @@ async function uploadResume(event) {
   els.uploadSubmitBtn.disabled = true;
   try {
     for (const file of files) {
-      if (!String(file.name || "").toLowerCase().endsWith(".pdf")) {
-        failed.push({ name: file.name || "未命名文件", reason: "仅支持上传 PDF 文件" });
+      if (!/\.(pdf|png|jpe?g|bmp|gif|webp)$/i.test(String(file.name || "").trim())) {
+        failed.push({ name: file.name || "未命名文件", reason: "仅支持上传 PDF 或图片文件" });
         continue;
       }
 
@@ -2473,7 +2473,7 @@ async function uploadResume(event) {
 
   const files = Array.from(els.uploadFile.files || []);
   if (files.length === 0) {
-    setUploadMessage("请选择至少一个 PDF 文件", "error");
+    setUploadMessage("请选择至少一个 PDF 或图片文件", "error");
     return;
   }
   const linkedJob = selectedUploadJob();
@@ -2497,8 +2497,8 @@ async function uploadResume(event) {
   els.uploadSubmitBtn.disabled = true;
   try {
     for (const file of files) {
-      if (!String(file.name || "").toLowerCase().endsWith(".pdf")) {
-        failed.push({ name: file.name || "未命名文件", reason: "仅支持上传 PDF 文件" });
+      if (!/\.(pdf|png|jpe?g|bmp|gif|webp)$/i.test(String(file.name || "").trim())) {
+        failed.push({ name: file.name || "未命名文件", reason: "仅支持上传 PDF 或图片文件" });
         continue;
       }
 

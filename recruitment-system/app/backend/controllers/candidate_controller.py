@@ -22,6 +22,7 @@ from ..services.recruitment_service import (
     filter_candidates,
     get_evaluation,
     get_resume_result_summary_for_user,
+    guess_resume_content_type,
     list_candidates_for_user,
     list_interview_calendar_for_user,
     parse_candidate_filters,
@@ -187,7 +188,7 @@ def handle_get_candidate_routes(handler: Any, parsed: Any, path: str, user: dict
         if file_path is None:
             handler._send_json({"error": "candidate not found"}, status=HTTPStatus.NOT_FOUND)
             return True
-        handler._send_file(file_path, "application/pdf")
+        handler._send_file(file_path, guess_resume_content_type(file_path.name))
         return True
 
     return False
@@ -570,9 +571,9 @@ def handle_post_candidate_routes(handler: Any, path: str, user: dict[str, Any]) 
                     operation_type="upload",
                     biz_object_type="candidate_file",
                     operation_result=RESULT_FAILED,
-                    remark="请上传 PDF 文件",
+                    remark="请上传 PDF 或图片文件",
                 )
-                handler._send_json({"error": "请上传 PDF 文件"}, status=HTTPStatus.BAD_REQUEST)
+                handler._send_json({"error": "请上传 PDF 或图片文件"}, status=HTTPStatus.BAD_REQUEST)
                 return True
             job_payload_raw = str(fields.get("job_payload", "") or "").strip()
             job_payload = parse_job_payload(job_payload_raw)
